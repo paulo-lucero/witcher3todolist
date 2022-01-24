@@ -1,0 +1,8 @@
+*.db
+*.pyc
+W3gDbDevt/
+tests/
+W3gVrenv/
+__pycache__/
+W3gWsDevt/*.bat
+W3gWsProto/

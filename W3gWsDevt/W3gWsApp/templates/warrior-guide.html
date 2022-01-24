@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="{{ url_for('static', filename='wr-style.css') }}">
+<title>Witcher 3 Level Based Guide</title>
+</head>
+<body>
+<div class="quest-query">
+<input type="text" value="Search quest here....">
+<input type="number" title="Insert Level here..." min="0">
+</div>
+<div class="page-section">
+<div id="levelsect" class="level-section">
+</div>
+<div class="nlevel-section">
+</div>
+</div>
+<div>
+<h2>Test Section:</h2>
+<button type="button" onclick="alert('Hello world!')">Click Me!</button>
+<p> Check venv path: <a href="{{ url_for('testingenv.check_envpath') }}" target="_blank">Click Me!</a></p>
+<p> Check working path: <a href="{{ url_for('testingenv.check_apppath') }}" target="_blank">Click Me!</a></p>
+<p> Check if debug mode is enabled: <a href="{{ url_for('testingenv.check_debugmode') }}" target="_blank">Test Error!</a></p>
+<p> Check database path: <a href="{{ url_for('testingenv.check_configdb') }}" target="_blank">DB check result!</a></p>
+</div>
+<script src="{{ url_for('static', filename='w3gretrieve.js') }}"></script>
+</body>
+</html>

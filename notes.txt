@@ -1,0 +1,255 @@
+>sqlite queries useful commands
+----------------------------------------------------------
+SELECT
+quest_name,
+quest_url,
+level.r_level,
+category.quest_category,
+unmarked_status.unmarked,
+region.region_name,
+type.quest_type,
+status.quest_status
+FROM
+all_quests
+LEFT JOIN level ON level.id = all_quests.level_id
+LEFT JOIN category ON category.id = all_quests.category_id
+LEFT JOIN unmarked_status ON unmarked_status.id = all_quests.unmarkstatus_id
+LEFT JOIN region ON region.id = all_quests.region_id
+LEFT JOIN type ON type.id = all_quests.type_id
+LEFT JOIN status ON status.id = all_quests.status_id
+--------------------------------------------------------------
+SELECT
+affected.quest_name AS 'Affected Quest',
+affected.quest_url AS 'Affected Questurl',
+cut.quest_name AS 'Cutoff Quest'
+FROM
+all_quests affected
+INNER JOIN all_quests cut ON affected.cutoff = cut.id;
+-------------------------------------------------------------------
+SELECT
+miss.quest_name,
+miss.quest_url,
+card.quest_name,
+card.quest_url
+FROM all_quests miss
+INNER JOIN all_quests card ON miss.missable_card = card.id
+---------------------------------------------------------------------
+SELECT
+all_quests.id,
+all_quests.quest_name,
+all_quests.quest_url,
+enemies_list.enemy_name,
+enemies_list.enemy_url
+FROM
+all_quests
+LEFT JOIN quest_enemies ON quest_enemies.quest_id = all_quests.id
+LEFT JOIN enemies_list ON quest_enemies.enemy_id = enemies_list.id
+ORDER BY
+all_quests.id ASC;
+
+===========================================================================================
+
+>database processing
+ -use errorhandling(alternatives)
+  -try: whole process...close database print('database close')
+   except: close database print('Error encountered')
+   -catch the exception and present it to the user
+  -with statement
+   -if possible
+
+>OPTIONAL: reorder processing(main quest only)
+ -for now let assume that the main is already ordered
+ -future:
+  -it seems that the parent - children nodes/tree tracking is more efficient to achieve by getting first the most parent node then from the most parent node start to get its each children then so on..
+  -research more on python/database/etc tree/nodes:
+   -python
+    -nodes: https://www.tutorialspoint.com/python/python_nodes.htm
+    -linked list:
+     -https://www.tutorialspoint.com/python_data_structure/python_linked_lists.htm
+     -https://realpython.com/linked-lists-python/
+
+>check if all url returns 200
+ -use wait for every 5 url/etc, for not overloading the server
+
+>learn (see Current Goal - todoist, learning notes)
+ -html
+ -css
+ -javascript
+  -node js
+  -express js
+ -python server-side
+ -for interactive witcher 3 guide
+  -goal: when a level is inputted it will show unfinished secondary quests & all
+   unfinished main quests(including unfinished secondary quests related to it) that
+   under of ±5 level restriction
+   -ordered query
+  -allows "cross-out" a quest to indicate that it is finished
+   -guideline for what to learn in html and css
+  -local/file webpage
+
+>addtl notes
+ -use flask, since it's "micro" and its more easy to
+  the current problems individually
+  -*search first how to "close" flask_app or server script
+   -*check in task manager for any "flask" services
+   -after applying "shutdown script", check in the task manager if "flask" still running
+ -problems(by priority):
+  -use basic styles, until said features are implemented
+   -features
+    -query of level data
+     -interacting level data
+      -adding notes
+      -allows undone/done
+      -indicate if there is no data
+    -query of nonlevel data
+     -indicate if there is no data
+    -interacting nonlevel data
+  -improve styles
+   -add "loading" display
+ -other notes:
+  -use external css to style generated inputs
+   -use class name and add it in the javascript
+   -less lines of code in javascript
+  -check if memory/cpu extension is python as backend
+  -test if javascript works on steam overlay browser
+   -if not then just create a guide where list all
+    quest that needed to be done in per level
+    even it produce duplicate missions
+
+
+>*visualize first and try to recreate the appearance of webpage
+ -visualizing and creating a "hard picture" in software/etc
+  -use simple graphic editor/etc
+ -*starts at simple structure/mechanics/interactive features/etc
+  -e.g. black and white structure, non-animation interactive & etc
+  -*try lunacy software
+
+>guide notes managing
+ -as much as possible insert/associate/etc notes in a quest
+  -enemies guide notes, scavenger notes, enchanting-underlevel notes and etc
+ -probably notes that aren't associated with a quest
+  -inventory management and fight notes
+ -probably need to add "notes" column per quest
+
+>displaying
+ -using file:/// in steam overlay, can't be create a hyperlink, for it to
+  work the file:/// address need to paste on the steam browser address bar
+ -display two sets of data
+  -level sections
+   -data shown changes depending on inputted level by the user
+   -by ± 5 level restriction
+  -all secondary quests (without level)
+   -sections are divided by map  (multiple locations, white orchard, etc)
+    -default: all hide
+    -quest with cutoff will shown first/above of the said cutoff quest
+     -*every retreiving of a quest, check if it is a cutoffquest(will affect an
+      another quest) before displaying it
+      -retrieve all quests that it will be affecting
+      -dont process the quests again that shown as cutoff quest and affected quest
+       -save them in a list/etc
+      -show both in level section and all secondary quests (without level) section
+       -it possible that some cutoff secondary quest and affected secondary quest don't have level
+   -display a "average number of secondary quest(without level) that need to finish
+    per main quest(not including last quests)"
+    -the average number changes if number of finished secondary quest(without level)
+     after finishing a main quest is less than or more than the last average number
+     -can't do it per region, since each region has different number of quests
+    -display of "counter" of finished secondary quest
+     -will restart to 0 after finishing a main quest
+   -display(hidable) of non-disappearing qwent players
+    -replace the level section or secondary quests (without level), if shown
+     -since the current focus is getting cards and not to complete a quest
+    -clickable url: https://witcher.fandom.com/wiki/Gwent_players
+    -check the database
+    -interactive (done or undone)
+    -if has notes, indicate it
+     -for Claywich merchant notes https://witcher.fandom.com/wiki/Collect_%27Em_All#Missable_Cards
+ -level sections
+  -display first the scavenger quests
+   -even first of risk of overlevel quests section
+  -risk of overlevel quests section(first section)
+   -all category of quests that within +4 level
+   -quests shown in here will be also show on the by level sections
+  -by level sections
+   -seperate tabs
+    -main quest
+    -secondary quest
+   -priority is main quest ordered manner (questid 1 --> 2 ...)
+    -some main quest level are below than its previous main quest
+     -basis is order questid not level since some main quest dont have level
+     -include it when displaying all quests(reqardless of its level) until that said
+      main quest
+     -scan until the end, many main quest could be have lower level that its previous
+     -e.g. quest1 lvl 20, quest2 lvl 22, quest3 lvl 19, quest4 lvl 18, quest5 lvl 21
+     -requested level is 15 thus all quest1, quest2, quest3, quest4 is included
+   -for secondary quests tab
+    -show how many secondary questes needed to complete
+  -for quests that will make a quest/s unavailable after starting /finishing it
+   -show of it "affected" quests
+   -indicated this quest, e.g. make it bold/etc
+   -mechanics
+    -indicated all quest with affected quests(bold/etc)
+    -when click it will display all the affected quests
+    -then again indicated all said affected quest with its own affected quest(bold/etc)
+    -when click it will display all the affected quests above and indented w/ markings(line/etc)
+    -then again indicated all said affected quest with its own affected quest(bold/etc)
+    -when click it will display all the affected quests above and indented w/ markings(line/etc) but deindented the cutoff quest
+    -then repeat whole process untill no affected quests shown
+    -notes:
+     -query of affected quest are done only when the "affected quest" is clicked
+     -to know if quest has affected quest/s
+      -query the id = cutoff_id
+  -quest with missable cards, indicate this(still dont know how to display it)
+   -player name and url
+   -location
+   -references:
+    -https://witcher.fandom.com/wiki/Collect_%27Em_All#Missable_Cards
+    -https://witcher.fandom.com/wiki/Gwent_players
+  -create a interactive hidable etc feature for enemies notes
+   -if click "unhide" will show the enemy notes
+  -search/query bars & tabs
+   -"fixed" position
+   -counter of needed to finish
+
+>later version/s:
+ -allows adding of quest in between
+  -problem: still don't know how to listen in a js generated element
+ -server-side session/web storage api/IndexedDB API
+  -https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Client-side_web_APIs/Client-side_storage
+
+============deprecated========================
+>quests formatting
+ -display related sidequests with level by level
+ -indicate the level order range
+  -level 8 order, will be display as level 8 - 12
+
+ -display missions by order of main quests
+  -main quests > affected quests(cut off) > non-affected quests
+   -always display scavenger quest as first/above of all quests
+   -for side quests with cut off side quests, the affected side quests should be display above of cutoff quests
+    -indicate cutoff quests of the affected quests
+   -non-affected quests are grouping/relation to main quests is based on level
+ -retreiving quests
+  -all quests table
+  -multiple region quests table
+ -when retreived a main quest data by order, formatting the guide by order of main quest
+  -get all of its cutoff quests relations
+   -e.g. quest1 > quest2 > quest3 > ...
+    -quest1 is the most cut off quest while quest3 is the last quest not being cutoff(not affecting other quests)
+  -analyze it
+   -write the quests order by main quests > affected quests(cut off)
+    -for side quests with cut off side quests, the affected side quests should be display above of cutoff quests
+  -the written quests id from "cutoff quests relation" process should be saved in a collection
+   -so it can be check for the next quest data retrieving if they are already retrieved and not needed to write
+ -indicate each quests either main, side, etc
+ -indicate in the quests if has cutoff
+  -provide name and url
+ -indicate its quests levels
+ -main quests are bold
+
+ >Notes
+ -General notes
+   -keep this short as much as possible
+   -maybe includes also the gear notes/etc
+ -Combat notes
+ -Mission notes

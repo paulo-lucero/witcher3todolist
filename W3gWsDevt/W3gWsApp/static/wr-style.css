@@ -1,0 +1,107 @@
+.quest-query {
+  margin-bottom: .3vw;
+}
+
+.quest-query input[type="text"] {
+  width: 20vw;
+  border: 3px solid black;
+  border-radius: 5px;
+}
+
+.quest-query input[type="number"] {
+  width: 5vw;
+  border: 3px solid black;
+  border-radius: 5px;
+}
+
+.page-section {
+  height: 100%; /*Later: adaptive, height value changes, might need to use a function e.g. javascript */
+}
+
+.level-section {
+  float: left;
+  position: relative;
+  box-sizing: border-box;
+  height: 100%;
+  width: 50%;
+  padding: 10px 20px;
+  background-color: #EEEEEE;
+}
+
+.level-section::after {
+  content: '';
+  position: absolute;
+  right: -.5px;
+  top: 5%;
+  height: 90%;
+  border-left: 1px solid red;
+  z-index: 1;
+}
+
+.nlevel-section {
+  float: left;
+  position: relative;
+  box-sizing: border-box;
+  height: 100%;
+  width: 50%;
+  padding: 10px 20px;
+  background-color: #EEEEEE;
+}
+
+.nlevel-section::after {
+  content: '';
+  position: absolute;
+  left: -.5px;
+  top: 5%;
+  height: 90%;
+  border-left: 1px solid blue;
+  z-index: 1;
+}
+
+.page-section::after {
+  content: "";
+  clear: both;
+  display: table;
+  margin-bottom: .3vw;
+}
+
+.mQuest-Data {
+  display: inline-block;
+  width: 30%;
+  word-wrap: break-word;
+}
+
+.mQuest-level {
+  display: inline-block;
+  width: 30%;
+}
+
+.mLvlAddtl-menu {
+  display: inline-block;
+  width: 8.5%;
+}
+
+.qwt-table, .enm-table {
+  display: none;
+}
+
+.mLvlAddtl-menu:hover {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.normal-quest,
+.normal-quest a:link,
+.normal-quest a:visited {
+  color: #483D8B;
+}
+
+.cutoff-quest,
+.cutoff-quest a:link,
+.cutoff-quest a:visited {
+  color: red;
+}
+
+/* .cutoff-quest span, .cutoff-quest span a:link, .cutoff-quest span a:visited {
+  color: red;
+} */
