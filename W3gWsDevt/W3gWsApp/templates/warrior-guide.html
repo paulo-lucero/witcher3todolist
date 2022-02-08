@@ -6,6 +6,8 @@
 <title>Witcher 3 Level Based Guide</title>
 </head>
 <body>
+<div class="quest-notes"></div>
+<div class="w3g-body">
 <div class="quest-query">
 <input type="text" value="Search quest here....">
 <input type="number" title="Insert Level here..." min="0">
@@ -23,6 +25,7 @@
 <p> Check working path: <a href="{{ url_for('testingenv.check_apppath') }}" target="_blank">Click Me!</a></p>
 <p> Check if debug mode is enabled: <a href="{{ url_for('testingenv.check_debugmode') }}" target="_blank">Test Error!</a></p>
 <p> Check database path: <a href="{{ url_for('testingenv.check_configdb') }}" target="_blank">DB check result!</a></p>
+</div>
 </div>
 <script src="{{ url_for('static', filename='w3gretrieve.js') }}"></script>
 </body>

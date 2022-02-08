@@ -65,13 +65,13 @@
   margin-bottom: .3vw;
 }
 
-.mQuest-Data {
+.mQuest-Data, .mAffitem-Qname {
   display: inline-block;
   width: 30%;
   word-wrap: break-word;
 }
 
-.mQuest-level {
+.mQuest-level, .mAffitem-Qlvl {
   display: inline-block;
   width: 30%;
 }
@@ -79,10 +79,6 @@
 .mLvlAddtl-menu {
   display: inline-block;
   width: 8.5%;
-}
-
-.qwt-table, .enm-table {
-  display: none;
 }
 
 .mLvlAddtl-menu:hover {

@@ -1,5 +1,6 @@
 *.db
 *.pyc
+*.txt
 W3gDbDevt/
 tests/
 W3gVrenv/

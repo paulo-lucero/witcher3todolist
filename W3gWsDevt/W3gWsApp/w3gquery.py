@@ -28,66 +28,42 @@ def levelMission_info(level_info):
                           ORDER BY all_quests.id ASC''', (level_info, ))
     mquest_query = cur_db.fetchall()
 
-    addtquery_basis = mquest_query[-1]['id']
-    cur_db.execute('''SELECT all_quests.id, qwent_players.p_name, qwent_players.p_url, qwent_players.p_location, qwent_players.qwent_notes
-                        FROM missable_players INNER JOIN all_quests ON missable_players.allquest_id = all_quests.id
-                        INNER JOIN qwent_players ON missable_players.qwtplayer_id = qwent_players.id
-                        WHERE all_quests.status_id = 1 AND missable_players.allquest_id <= ? ORDER BY missable_players.allquest_id ASC''',
-                        (addtquery_basis, ))
-    mqwt_query = cur_db.fetchall()
+    return jsonify(w3gdbhandl.quest_consoData(cur_db, mquest_query))
 
-    cur_db.execute('''SELECT all_quests.id, enemies_list.enemy_name, enemies_list.enemy_url, enemies_list.enemy_notes
-                        FROM quest_enemies INNER JOIN all_quests ON quest_enemies.quest_id = all_quests.id
-                        INNER JOIN enemies_list ON quest_enemies.enemy_id = enemies_list.id
-                        WHERE all_quests.status_id = 1 AND quest_enemies.quest_id <= ? ORDER BY quest_enemies.quest_id ASC''',
-                        (addtquery_basis, ))
-    menemies_query = cur_db.fetchall()
-
-    def get_addtlData(consolidatedQuery, mainQuestData, addtlQuery, keyName):
-        all_addtlInfo = []
-        for addtl_info in addtlQuery:
-            if addtl_info['id'] == mainQuestData['id']:
-                all_addtlInfo.append(addtl_info)
-        if all_addtlInfo:
-            consolidatedQuery[keyName] = all_addtlInfo
-
-    consol_query = []
-    for mquest_info in mquest_query:
-        consol_info = {}
-        consol_info['mquest_data'] = mquest_info
-        if mqwt_query[0]: #check if not None
-            get_addtlData(consol_info, mquest_info, mqwt_query, 'mqwt_data')
-        if menemies_query[0]:
-            get_addtlData(consol_info, mquest_info, menemies_query, 'menemy_data')
-        cur_db.execute('SELECT all_quests.quest_name FROM all_quests WHERE all_quests.cutoff = ?;',
-                         (mquest_info['id'], ))
-        if cur_db.fetchone():
-            consol_info['mqaffected'] = True
-        else:
-            consol_info['mqaffected'] = False
-        consol_query.append(consol_info)
-
-    return jsonify(consol_query)
-
-@query_bp.route('/id-<int:id_info>')
+@query_bp.route('/aff-id-<int:id_info>')
 def affected_info(id_info):
     conn_db = w3gdbhandl.conn_w3gdb()
     cur_db = conn_db.cursor()
-    click.echo(f'Query cutoff id is {id_info}')
+    click.echo(f'Affected Query cutoff id is {id_info}')
     cur_db.execute('''SELECT all_quests.id, all_quests.quest_name, all_quests.quest_url, level.r_level
-                        FROM all_quests LEFT JOIN level ON level.id = all_quests.level_id
-                        WHERE all_quests.cutoff = ?''', (id_info, ))
+                      FROM all_quests LEFT JOIN level ON level.id = all_quests.level_id
+                      WHERE all_quests.cutoff = ?''', (id_info, ))
     aff_quests = cur_db.fetchall()
-    #separate the function for querying if a quest has affected or not
-    consol_query = []
-    for affquests_info in aff_quests:
-        consol_info = {}
-        consol_info['affq_data'] = affquests_info
-        cur_db.execute('SELECT all_quests.quest_name FROM all_quests WHERE all_quests.cutoff = ?;',
-                         (affquests_info['id'], ))
-        if cur_db.fetchone():
-            consol_info['cutoff_status'] = True
-        else:
-            consol_info['cutoff_status'] = False
-        consol_query.append(consol_info)
-    return jsonify(consol_query)
+
+    return jsonify(w3gdbhandl.quest_consoData(cur_db, aff_quests))
+
+@query_bp.route('/mis-id-<int:id_info>')
+def missable_info(id_info):
+    conn_db = w3gdbhandl.conn_w3gdb()
+    cur_db = conn_db.cursor()
+    click.echo(f'Missable Query cutoff id is {id_info}')
+    cur_db.execute('''SELECT qwent_players.p_name, qwent_players.p_url, qwent_players.p_location,
+                      player_category.p_category, qwent_players.qwent_notes
+                      FROM missable_players INNER JOIN all_quests ON all_quests.id = missable_players.allquest_id
+                      INNER JOIN qwent_players ON qwent_players.id = missable_players.qwtplayer_id
+                      INNER JOIN player_category ON player_category.id = qwent_players.pcat_id
+                      WHERE missable_players.allquest_id = ?''', (id_info, ))
+    miss_info = cur_db.fetchall()
+    return jsonify(miss_info)
+
+@query_bp.route('/enm-id-<int:id_info>')
+def enemies_info(id_info):
+    conn_db = w3gdbhandl.conn_w3gdb()
+    cur_db = conn_db.cursor()
+    click.echo(f'Enemy Query: quest id is {id_info}')
+    cur_db.execute('''SELECT enemies_list.enemy_name, enemies_list.enemy_url, enemies_list.enemy_notes
+                      FROM quest_enemies INNER JOIN all_quests ON all_quests.id = quest_enemies.quest_id
+                      INNER JOIN enemies_list ON enemies_list.id = quest_enemies.enemy_id
+                      WHERE quest_enemies.quest_id = ?''', (id_info, ))
+    enm_info = cur_db.fetchall()
+    return jsonify(enm_info)
