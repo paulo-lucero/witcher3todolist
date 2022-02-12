@@ -1,140 +1,242 @@
-//use object to retain some information in memory: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener#getting_data_into_and_out_of_an_event_listener
-//use .currentTarget
-let mLvlAdMenu = {'Missable':'qwt-table', 'Enemies':'enm-table'}
+//as much as possible separate the javascript code from html
+//e.g. use element.onclick = function; instead of onclick="javascript code"
 
-function openMLvlnote(evt) {//opening Missable and Enemies Notes
-  let addtlMenu = evt.currentTarget;
-  let openedTable = addtlMenu.parentElement.querySelector('table[style="display: unset;"]'); //null is returned if there are no matches
-  let noteTable = addtlMenu.parentElement.getElementsByClassName(mLvlAdMenu[addtlMenu.innerHTML])[0];
-  if (openedTable === noteTable) {
-    openedTable.removeAttribute('style');
+const queryInput = document.querySelector('.quest-query input[type="number"]');
+const levelSection = document.getElementById('levelsect');
+const notesBody = document.getElementById('qnotes-body');
+const menuNames = { //for easy code revision later
+  affName: 'Affected',
+  misName: 'Missable',
+  enmName: 'Enemies'
+};
+
+// later:
+//  use Event.currentTarget, then node sibling
+//  when using .queryselector, check if false(null), if not then do the instruction
+
+function createUrl(urlLink, urlName) {
+  let aTag = document.createElement('a');
+  aTag.href = urlLink;
+  aTag.innerHTML = urlName;
+  aTag.target = '_blank';
+  return aTag
+}
+
+async function queryInfo(queryUrl) {
+  let getInfo = await fetch(queryUrl);
+  if(!getInfo.ok) {
+    throw new Error(`HTTP error! status: ${getInfo.status}`);
   } else {
-    if (openedTable) {
-      openedTable.removeAttribute('style');
-    }
-    noteTable.style.display = 'unset';
+    jsoniedInfo = await getInfo.json();
+    console.log(jsoniedInfo);
+    return jsoniedInfo
   }
 }
 
-function levelAddltData(mData, mDataHeader, mDataCK, mTableClass) {
-  /*
-  data parameter structure:
-    1. mData = questItem
-    2. mDataHeader = th : array
-    3. mDataCK = contains classnames and key names : array with object/s type
-     3.1. for object: {classname:key name} or {classname:[key name...]}
-    4. mDataUrlCl = classname of name and url, for null checking of url
-  */
-  let innerSect = document.createElement('table');
-  innerSect.className = mTableClass;
-  let innerSectRow = document.createElement('tr');
-  for(let colHeader of mDataHeader) {
-    let rowDataElmt = document.createElement('th');
-    rowDataElmt.className = 'lvladdtl-notes';
-    rowDataElmt.appendChild(document.createTextNode(colHeader));
-    innerSectRow.appendChild(rowDataElmt);
+function genNotesData(noteNames) {
+  this[noteNames.affName] = { //property name should same with addtlNote.dataNotes
+    queryUrl: function(dataId) {
+      return `/query/aff-id-${dataId}`
+    },
+    noteClass: 'mAff-Note',
+    noteHeaders: [
+      ['mAffHeader-Qname', 'Quest Name'],
+      ['mAffHeader-Qlvl', 'Level']
+    ],
+    noteItems: [
+      ['mAffitem-Qname', ['quest_name', 'quest_url']],
+      ['mAffitem-Qlvl', 'r_level']
+    ]
+  },
+  this[noteNames.misName] = { //property name should same with addtlNote.dataNotes
+    queryUrl: function(dataId) {
+      return `/query/mis-id-${dataId}`
+    },
+    noteClass: 'mQwt-Note',
+    noteHeaders: [
+      ['mQwtHeader-Pname', 'Players'],
+      ['mQwtHeader-location', 'Location'],
+      ['mQwtHeader-notes', 'Notes']
+    ],
+    noteItems: [
+      ['mQwtItem-Pname', ['p_url', 'p_name']],
+      ['mQwtItem-location', 'p_location'],
+      ['mQwtItem-notes', 'qwent_notes']
+    ]
+  },
+  this[noteNames.enmName] = {//property name should same with addtlNote.dataNotes
+    queryUrl: function(dataId) {
+      return `/query/enm-id-${dataId}`
+    },
+    noteClass: 'mEnm-Note',
+    noteHeaders: [
+      ['mEnmHeader-Ename', 'Enemies Name'],
+      ['mEnmHeader-notes', 'Notes']
+    ],
+    noteItems: [
+      ['mEnmItem-Ename', ['enemy_url', 'enemy_name']],
+      ['mEnmItem-notes', 'enemy_notes']
+    ]
   }
-  innerSect.appendChild(innerSectRow); //header
-  for(let mQdataRow of mData) { //questItem = [row1, row2, row3...], mQdataRow = row1/row2... = object
-    innerSectRow = document.createElement('tr');
-    innerSectRow.className = 'lvladdtl-row';
-    let mQdataInfos = [] //to make sure it is ordered
-    for(let ckInfo of mDataCK) {
-      let cInfo = Object.keys(ckInfo)[0]; //class name
-      let kInfo = ckInfo[cInfo]; //key/s
-      let kValue;
-      if(Array.isArray(kInfo)) {
-        kValue = [];
-        for(let kname of kInfo) {
-          kValue.push(mQdataRow[kname]);
-       }
-      } else {
-         kValue = mQdataRow[kInfo];
-        }
-      let tdInfo = {};
-      tdInfo[cInfo] = kValue;
-      mQdataInfos.push(tdInfo);
-    }
-    for(let mQdataInfo of mQdataInfos) {
-      let rowDataElmt = document.createElement('td');
-      let rowDataClass = Object.keys(mQdataInfo)[0];
-      let rowData = mQdataInfo[rowDataClass];
-      let rowDataName = (Array.isArray(rowData)) ? rowData[0] : null
-      let rowDataUrl = (Array.isArray(rowData)) ? rowData[1] : null
-      rowDataElmt.className = rowDataClass; //using the key as class name
-      let rowDatatd;
-      if(rowDataName && rowDataUrl) {
-        rowDatatd = createUrl(rowDataUrl, rowDataName);
-      } else {
-        rowDatatd = document.createTextNode((rowDataName ? rowDataName : rowData));
-      }
-      rowDataElmt.appendChild(rowDatatd);
-      innerSectRow.appendChild(rowDataElmt);
-    }
-    innerSect.appendChild(innerSectRow); //tr element
-  }
-  return innerSect
 }
 
-async function displayAffected(evt) {//event listerner and displaying affected data
+const notesData = new genNotesData(menuNames);
+
+function addtlNote(consoData, dataInfo, urlClass='mQuest-Data', levelClass='mQuest-level', noteNames=menuNames) {
+  this.sectItemClass = consoData.cut ? 'cutoff-quest' : 'normal-quest',
+  this.fixedData = [
+    [urlClass, createUrl(dataInfo.quest_url, dataInfo.quest_name)],
+    [levelClass, document.createTextNode((dataInfo.r_level) ? dataInfo.r_level : 'N/A')]
+  ],
+  this.dataNotes = [
+    [noteNames.affName, consoData.cut],
+    [noteNames.misName, consoData.qwt],
+    [noteNames.enmName, consoData.enm]
+  ],
+  this.dataId = dataInfo.id,
+  this.cutoffMenu = noteNames.affName
+}
+
+function closeNotes(parentE, noteClass) {
+  let noteUl = parentE.querySelector('ul');
+  let noteStat = (noteUl === parentE.getElementsByClassName(noteClass)[0]) ? true : false
+  if (noteUl) {
+    parentE.removeChild(noteUl);
+  }
+  return noteStat
+}
+
+async function displayAddtlNotes(evt) {
+  let sect = evt.currentTarget.parentElement;
   let kcData = notesData[this.noteName];
-  let dataAffected = await queryInfo(kcData.queryUrl(this.dataId));
-  let affectedList = document.createElement('ul');
-  for (let affectedInfo of dataAffected) {
-    let affectedQuest = affectedInfo['info'];
-    affectedList.appendChild(displayLevelData([createUrl(affectedQuest['quest_url'], affectedQuest['quest_name']),
-                                               affectedQuest['r_level'], affectedInfo['cut'], false, false],
-                                               affectedQuest, document.createElement('li')))
+  let sameNote = closeNotes(sect, kcData.noteClass);
+  if (!sameNote) {
+    let dataNotes = await queryInfo(kcData.queryUrl(this.dataId));
+    let noteUl = document.createElement('ul');
+    noteUl.className = kcData.noteClass;
+    let noteli = document.createElement('li');
+    for (let [hClass, hName] of kcData.noteHeaders) {// header
+      let noteSpan = document.createElement('span');
+      noteSpan.className = hClass;
+      noteSpan.innerHTML = hName;
+      noteli.appendChild(noteSpan);
+    }
+    noteUl.appendChild(noteli);
+    for (let dataNote of dataNotes) {
+      noteli = document.createElement('li');
+      if (this.noteName === menuNames.affName) {// affected notes
+        let itemClasses = kcData.noteItems;
+        noteUl.appendChild(displayLevelData(new addtlNote(dataNote, dataNote.info,
+                                                          urlClass=itemClasses[0][0],
+                                                          levelClass=itemClasses[1][0]),
+                                              noteli))
+      } else {// missable and enemies notes
+          for (let [dataClass, dataKey] of kcData.noteItems) {// class and keys for accessing data in json
+            let noteSpan = document.createElement('span');
+            noteSpan.className = dataClass;
+            if (Array.isArray(dataKey)) {//processing url data
+              noteSpan.appendChild(createUrl(dataNote[dataKey[0]], dataNote[dataKey[1]]));
+            } else {
+              noteSpan.appendChild(document.createTextNode(dataNote[dataKey]))
+            }
+            noteli.appendChild(noteSpan);
+          }
+          noteUl.appendChild(noteli);
+        }
+    }
+    sect.appendChild(noteUl);
   }
-  questSect.appendChild(affectedList);
 }
 
-function displayLevelData(questList, mainData, sectElement) {
-  let itemCount = 1;
-  let cutoffType = questList[2]; //check if quest data has affected quests
-  let addtlSect = document.createElement('div');
-  for(let questItem of questList) {
-    let sectItem = document.createElement('span');
-    if(itemCount === 1) {//Quest Url
-      sectItem.className = 'mQuest-Data';
-      sectItem.appendChild(questItem);
-    } else if (itemCount === 2) {//Quest Level
-      sectItem.className = 'mQuest-level';
-      sectItem.appendChild(document.createTextNode(questItem));
-    } else if (itemCount === 3  && questItem) {//affected quest/s menu
-      sectItem.className = 'mLvlAddtl-menu';
-      sectItem.addEventListener('click', displayAffected.bind(mainData))
-      sectItem.appendChild(document.createTextNode('Affected'));
-    } else if (itemCount === 4 && questItem) { //Qwent info
-        sectItem.className = 'mLvlAddtl-menu';
-        sectItem.innerHTML = 'Missable';
-        // sectItem.addEventListener('click', openMLvlnote);
-        // let addNote = levelAddltData(questItem, ['Player Name', 'Player Location', 'Notes'],
-        //                          [{'qwt-playername':['p_name', 'p_url']},
-        //                           {'qwt-location':'p_location'},
-        //                           {'qwt-notes': 'qwent_notes'}], 'qwt-table');
-        // addtlSect.appendChild(addNote); //div element
-    } else if (itemCount === 5 && questItem) { //Enemies info
-        sectItem.className = 'mLvlAddtl-menu';
-        sectItem.innerHTML = 'Enemies';
-        // sectItem.addEventListener('click', openMLvlnote);
-        // let addNote = levelAddltData(questItem, ['Enemy Name', 'Notes'],
-        //                          [{'enm-name':['enemy_name', 'enemy_url']},
-        //                           {'enm-notes': 'enemy_notes'}], 'enm-table');
-        // addtlSect.appendChild(addNote); //div element
-    }
-    if (sectItem.hasChildNodes()) {
-      if (cutoffType) {
-        sectItem.classList.add('cutoff-quest');
-      } else {
-        sectItem.classList.add('normal-quest');
-      }
-      sectElement.appendChild(sectItem);
-    }
-    itemCount++;
+function displayLevelData(questInfos, sect) {
+  let innerSect = () => document.createElement('span'); //arrow function support in steam overlay browser is uncertain
+  let mainClass = questInfos.sectItemClass;
+  for (let [menuClass, menuData] of questInfos.fixedData) { // fixed data like questname and level
+    let sectItem = innerSect();
+    sectItem.classList.add(mainClass, menuClass);
+    sectItem.appendChild(menuData);
+    sect.appendChild(sectItem);
   }
-  if (addtlSect.hasChildNodes()) {
-    sectElement.appendChild(addtlSect);
+  for (let [noteName, noteBool] of questInfos.dataNotes) { // notes, this data aren't fixed/expected always to have
+    if (noteBool) {
+      let sectItem = innerSect();
+      sectItem.classList.add(mainClass, 'mLvlAddtl-menu');
+      sectItem.innerHTML = noteName;
+      sectItem.addEventListener('click', displayAddtlNotes.bind({dataId:questInfos.dataId, noteName:noteName}))
+      sect.appendChild(sectItem);
+    }
   }
-  return sectElement
+  return sect
 }
+
+async function retMissionInfo(queryValue) {
+  dataMissionInfo = await queryInfo(`/query/level-${queryValue}`);
+  if (levelSection.hasChildNodes()) {
+    while(levelSection.firstChild) {
+      levelSection.removeChild(levelSection.firstChild);
+    }
+  }
+  for (let dataMission of dataMissionInfo) {
+    levelSection.appendChild(displayLevelData(new addtlNote(dataMission, dataMission['info']), document.createElement('div')))
+  }
+}
+
+retMissionInfo(1) //opening of the website
+
+function missionQuery(evt) {
+  if(evt.key === 'Enter') {
+    retMissionInfo(queryInput.value)
+  }
+}
+
+function exitNotes(evt) {//closing overlay notes menu
+  let openNotes = evt.target;
+    //using "currentTarget", the target is always element with "qnotes-body" id, regardless where click event is dispatched
+  if (openNotes.id === 'qnotes-body') {
+    openNotes.style.display = 'none';
+  }
+}
+
+queryInput.addEventListener('keyup', missionQuery);
+
+notesBody.addEventListener('click', exitNotes);
+
+//testing overlay
+const buttonNotes = document.getElementById('test-notes');
+
+function testOpenNotes(evt) {
+  notesBody.style.display = 'flex';
+}
+
+buttonNotes.addEventListener('click', testOpenNotes);
+
+// TODO:
+//  -Problem:
+//   -switching animation between missable and enemies notes aren't smooth
+//    -possible cause: when the prev note is remove, the "space" which the prev note reside will also dissapper
+//    -possible solution: this can be solve with animation
+//   -memory usage seems do not decrease regardless of length of query result
+//  -opening missable, enemies & other notes, use blured overlay effect, good for dark theme site
+//   -use fix size for the notes content
+//   -using "filter: blur()" seems to work also on non-image contents(e.g. text)
+//    -enclose all elements in a div that will be blurred
+//     -use 100% vw & vh, since viewport is basically the part of the document that is currently visible
+//    -can apply class for body element, for bluring effect, just make sure not to blur the menu(apply addtl class)
+//   -https://www.w3schools.com/howto/howto_css_overlay.asp
+//   -https://www.w3schools.com/howto/howto_js_fullscreen_overlay.asp
+//   -https://stackoverflow.com/questions/11977103/blur-effect-on-a-div-element
+//    -http://jsfiddle.net/ayhj9vb0/
+//   -centering: https://www.freecodecamp.org/news/how-to-center-anything-with-css-align-a-div-text-and-more/
+//   -flebox: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Flexible_Box_Layout#guides
+//   -getting viewport size:
+//    -https://developer.mozilla.org/en-US/docs/Web/CSS/Viewport_concepts
+//    -https://developer.mozilla.org/en-US/docs/Web/API/Document/documentElement
+//    -https://developer.mozilla.org/en-US/docs/Web/API/Element/clientHeight
+//    -https://developer.mozilla.org/en-US/docs/Web/API/Element/clientWidth
+
+//=Notes=
+// -processing of risk of overleveling or leveled undone missions are to be done here
+// -for adding eventlistener in every loop
+//  -define a function outside of loop, so one reference will be made on all function made (good for memory)
+// -in case: if wanted to change(e.g. display none) a certain element when an another element receive an event, use .querySelector()
+//  -e.g. document.querySelector(div span[style:"display:block;"])
