@@ -1,19 +1,7 @@
-function closeNotes(parentE, noteClass, menuContainer=null) {
-  let noteUl = parentE.querySelector('ul');
-  let noteStat = (parentE.getElementsByClassName(noteClass)[0]) ? true : false; // if same note return true
-  if(menuContainer && ((menuContainer.children.length === 1) || noteStat)) { //if single note found or same, don't allowed to close it
-    return true
-  }
-  if (noteUl) {
-    parentE.removeChild(noteUl);
-  }
-  return noteStat
-}
-
 async function displayAffected(evt) {
   let sect = evt.currentTarget.parentElement;
   let kcData = notesData[menuNames.affName];
-  let sameNote = closeNotes(sect, kcData.noteClass);
+  let sameNote = closeNotes(sect.querySelector('ul'), sect.getElementsByClassName(kcData.noteClass)[0]);
   if (!sameNote) {
     let dataNotes = await queryInfo(kcData.queryUrl(this));
     let noteUl = document.createElement('ul');
@@ -22,7 +10,7 @@ async function displayAffected(evt) {
     for (let dataNote of dataNotes) {
       noteli = document.createElement('li');
       let itemClasses = kcData.noteItems;
-      noteUl.appendChild(displayLevelData(new addtlNote(dataNote, dataNote.info, displayAffected,
+      noteUl.appendChild(displayQueryData(new addtlNote(dataNote, dataNote.info, displayAffected,
                                                         showNotesOverlay, urlClass=itemClasses[0][0],
                                                         levelClass=itemClasses[1][0]),
                                             noteli));
@@ -32,16 +20,10 @@ async function displayAffected(evt) {
 }
 
 async function displayNote(evt) {
-  let sect = document.getElementById('qnotes-data');
-  let sameNote = false;
-  let notesInfos;
-  if (sect) {
-    sameNote = closeNotes(sect, this.noteClass, menuContainer=evt.currentTarget.parentElement);
-    notesInfos = sect;
-  } else {
-    notesInfos = document.createElement('div');
-    notesInfos.id = 'qnotes-data';
-  }
+  let sameNote = closeNotes(notesDataContainer.querySelector('ul'), notesDataContainer.getElementsByClassName(this.noteClass)[0],
+                            menuContainer=(notesDataContainer.hasChildNodes()) ? evt.currentTarget.parentElement : null);
+                            //when overlay show, notesDataContainer still dont have any child does the value should be null
+                            //to avoid returning true
   if (!sameNote) {
     let dataNotes = await queryInfo(this.queryUrl(this.dataId));
     let noteUl = document.createElement('ul');
@@ -61,16 +43,14 @@ async function displayNote(evt) {
       }
       noteUl.appendChild(noteli);
     }
-    notesInfos.appendChild(noteUl);
-    mainNotes.appendChild(notesInfos);
+    notesDataContainer.appendChild(noteUl);
+    mainNotes.appendChild(notesDataContainer);
   }
 }
 
 function showNotesOverlay(evt) {
-  let guideBody = document.getElementById('w3g-body');
-  let notesMenus = document.createElement('div');
-  notesMenus.id = 'qnotes-menus';
   let noteCount = 0;
+  let firstNote;
   for (let [notesName, notesBool] of this.notes) {
     if (notesBool) {
       noteCount++;
@@ -80,31 +60,29 @@ function showNotesOverlay(evt) {
       noteMenu.innerHTML = notesName;
       kcData.dataId = this.dataId;
       noteMenu.addEventListener('click', displayNote.bind(kcData));
-      notesMenus.appendChild(noteMenu);
+      notesMenuContainer.appendChild(noteMenu);
       if (noteCount === 1) {
-        noteMenu.click();
+        firstNote = noteMenu;
       }
     }
   }
-  mainNotes.appendChild(notesMenus);
+  firstNote.click();
+  mainNotes.appendChild(notesMenuContainer);
   guideBody.style.filter = 'blur(5px)';
   notesBody.style.display = 'flex';
 }
 
 function closeNotesOverlay(evt) {//closing overlay notes menu
-  let guideBody = document.getElementById('w3g-body');
   let openNotes = evt.target;
     //using "currentTarget", the target is always element with "qnotes-body" id, regardless where click event is dispatched
   if (openNotes.id === 'qnotes-body') {
-    while(mainNotes.firstChild) {
-        mainNotes.removeChild(mainNotes.firstChild);
-    }
+    removingData([notesDataContainer, notesMenuContainer]);
     openNotes.style.display = 'none';
     guideBody.style.removeProperty('filter');
   }
 }
 
-function displayLevelData(questInfos, sect) {
+function displayQueryData(questInfos, sect) {
   let innerSect = () => document.createElement('span'); //arrow function support in steam overlay browser is uncertain
   let mainClass = questInfos.sectItemClass;
   for (let [menuClass, menuData] of questInfos.fixedData) { // fixed data like questname and level
@@ -125,27 +103,61 @@ function displayLevelData(questInfos, sect) {
   return sect
 }
 
-async function retMissionInfo(queryValue) {
-  dataMissionInfo = await queryInfo(`/query/level-${queryValue}`);
-  if (levelSection.hasChildNodes()) {
-    while(levelSection.firstChild) {
-      levelSection.removeChild(levelSection.firstChild);
+function displayLevelData(evt) {//main and secondary quests with levels
+  let noteClass = this.lvlSectID;
+  let sameNote = closeNotes(levelSection.firstChild, document.getElementById(noteClass),
+                            menuContainer=(levelSection.hasChildNodes()) ? evt.currentTarget.parentElement : null)
+  let noteBody = document.createElement('div');
+  noteBody.id = noteClass;
+  if (!sameNote) {
+    for (let missionInfo of this.missionInfos) {
+      noteBody.appendChild(displayQueryData(new addtlNote(missionInfo, missionInfo['info'],
+                                                              displayAffected, showNotesOverlay),
+                                                document.createElement('div')))
+    }
+    levelSection.appendChild(noteBody);
+  }
+}
+
+async function missionQuery(evt) {
+  let inputValue;
+  if(Number.isInteger(evt)) {
+    inputValue = evt;
+  } else {
+    if(evt.key === 'Enter') { //querying level
+      inputValue = queryInput.value;
+    } else {
+      return
     }
   }
-  for (let dataMission of dataMissionInfo) {
-    levelSection.appendChild(displayLevelData(new addtlNote(dataMission, dataMission['info'],
-                                                            displayAffected, showNotesOverlay),
-                                              document.createElement('div')))
+  queryLevel = await queryInfo(`/query/level-${inputValue}`);
+  if (levelMenu.hasChildNodes() && levelSection.hasChildNodes()) {
+    removingData([levelSection, levelMenu]);
   }
+  let noteCount = 0;
+  let firstNote;
+  for (let [lvlMenuData, missionInfoData] of [ [ ['Main Quests', 'lvlmain-menu'], { missionInfos: queryLevel.main,
+                                              lvlSectID: 'lvlsect-main' } ], [ ['Second Quests', 'lvlsec-menu'],
+                                              { missionInfos: queryLevel.second, lvlSectID: 'lvlsect-sec' } ] ]) {
+                                             //enveloped in array, for ordered processing
+                                             //when overlay show, notesDataContainer still dont have any child does the value should be null
+                                             //to avoid returning true
+    if (missionInfoData.missionInfos) {
+      noteCount++;
+      let lvlMenuCont = document.createElement('span');
+      lvlMenuCont.innerHTML = lvlMenuData[0];
+      lvlMenuCont.id = lvlMenuData[1];
+      lvlMenuCont.addEventListener('click', displayLevelData.bind(missionInfoData))
+      levelMenu.appendChild(lvlMenuCont);
+      if (noteCount === 1) {
+        firstNote = lvlMenuCont;
+      }
+    }
+  }
+  firstNote.click();
 }
 
-function missionQuery(evt) {
-  if(evt.key === 'Enter') {
-    retMissionInfo(queryInput.value)
-  }
-}
-
-retMissionInfo(1) //opening of the website
+missionQuery(1) //visiting the website; for now default query level is 1
 
 queryInput.addEventListener('keyup', missionQuery);
 

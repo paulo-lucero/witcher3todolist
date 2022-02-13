@@ -1,7 +1,11 @@
 const queryInput = document.querySelector('#quest-query input[type="number"]');
-const levelSection = document.getElementById('level-section');
+const levelMenu = document.getElementById('lvlsect-menu');
+const levelSection = document.getElementById('lvlsect-body');
+const guideBody = document.getElementById('w3g-body');
 const notesBody = document.getElementById('qnotes-body');
 const mainNotes = document.getElementById('qnotes-overlay');
+const notesMenuContainer = document.getElementById('qnotes-menus');
+const notesDataContainer = document.getElementById('qnotes-data');
 const menuNames = { //for easy code revision later
   affName: 'Affected',
   qNotes: 'Notes',
@@ -85,4 +89,29 @@ function genNoteHeader(containerEle, headerEleName, headersData) {
     containerEle.appendChild(noteSpan);
   }
   return containerEle
+}
+
+function removingData(noteData) {
+  let noteInfos;
+  if (!Array.isArray(noteData)) {
+    noteInfos = [noteData]
+  } else {
+    noteInfos = noteData
+  }
+  for (let noteInfo of noteInfos) {
+    while(noteInfo.firstChild) {
+      noteInfo.removeChild(noteInfo.firstChild);
+    }
+  }
+}
+
+function closeNotes(noteContainer, noteClassEle, menuContainer=null) {
+  let noteStat = (noteClassEle) ? true : false; // if same note return true
+  if(menuContainer && ((menuContainer.children.length === 1) || noteStat)) { //if single note found or same, don't allowed to close it
+    return true
+  }
+  if (noteContainer) {
+    noteContainer.remove();
+  }
+  return noteStat
 }

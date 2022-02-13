@@ -26,9 +26,23 @@ def levelMission_info(level_info):
                                                   WHERE all_quests.category_id = 1 AND all_quests.status_id = 1
                                                   AND level.r_level <= ?)
                           ORDER BY all_quests.id ASC''', (level_info, ))
-    mquest_query = cur_db.fetchall()
+        mquest_query = cur_db.fetchall()
+        if mquest_query[0]:
+            mquest_data = w3gdbhandl.quest_consoData(cur_db, mquest_query)
+        else:
+            mquest_data = None
 
-    return jsonify(w3gdbhandl.quest_consoData(cur_db, mquest_query))
+        cur_db.execute('''SELECT all_quests.id, quest_name, quest_url, level.r_level
+                          FROM all_quests INNER JOIN level ON level.id = all_quests.level_id
+                          WHERE all_quests.category_id != 1 AND all_quests.status_id = 1 AND
+                          level.r_level <= ? ORDER BY level.r_level ASC''', (level_info, ))
+        squest_query = cur_db.fetchall()
+        if squest_query[0]:
+            squest_data = w3gdbhandl.quest_consoData(cur_db, squest_query)
+        else:
+            squest_data = None
+
+    return jsonify(main=mquest_data, second=squest_data)
 
 @query_bp.route('/aff-id-<int:id_info>')
 def affected_info(id_info):
