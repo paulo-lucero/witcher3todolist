@@ -22,8 +22,6 @@ async function displayAffected(evt) {
 async function displayNote(evt) {
   let sameNote = closeNotes(notesDataContainer.querySelector('ul'), notesDataContainer.getElementsByClassName(this.noteClass)[0],
                             menuContainer=(notesDataContainer.hasChildNodes()) ? evt.currentTarget.parentElement : null);
-                            //when overlay show, notesDataContainer still dont have any child does the value should be null
-                            //to avoid returning true
   if (!sameNote) {
     let dataNotes = await queryInfo(this.queryUrl(this.dataId));
     let noteUl = document.createElement('ul');
@@ -76,7 +74,7 @@ function closeNotesOverlay(evt) {//closing overlay notes menu
   let openNotes = evt.target;
     //using "currentTarget", the target is always element with "qnotes-body" id, regardless where click event is dispatched
   if (openNotes.id === 'qnotes-body') {
-    removingData([notesDataContainer, notesMenuContainer]);
+    removeData([notesDataContainer, notesMenuContainer]);
     openNotes.style.display = 'none';
     guideBody.style.removeProperty('filter');
   }
@@ -103,14 +101,15 @@ function displayQueryData(questInfos, sect) {
   return sect
 }
 
-function displayLevelData(evt) {//main and secondary quests with levels
-  let noteClass = this.lvlSectID;
-  let sameNote = closeNotes(levelSection.firstChild, document.getElementById(noteClass),
+async function displayLevelData(evt) {//main and secondary quests with levels
+  let noteId = this.lvlSectID;
+  let sameNote = closeNotes(levelSection.firstChild, document.getElementById(noteId),
                             menuContainer=(levelSection.hasChildNodes()) ? evt.currentTarget.parentElement : null)
-  let noteBody = document.createElement('div');
-  noteBody.id = noteClass;
   if (!sameNote) {
-    for (let missionInfo of this.missionInfos) {
+    let noteBody = document.createElement('div');
+    noteBody.id = noteId;
+    let queryLevel = await queryInfo(this.retUrl);
+    for (let missionInfo of queryLevel) {
       noteBody.appendChild(displayQueryData(new addtlNote(missionInfo, missionInfo['info'],
                                                               displayAffected, showNotesOverlay),
                                                 document.createElement('div')))
@@ -130,31 +129,34 @@ async function missionQuery(evt) {
       return
     }
   }
-  queryLevel = await queryInfo(`/query/level-${inputValue}`);
+  let lvlCatStatus = await queryInfo(`/query/levelcat-${inputValue}`);
   if (levelMenu.hasChildNodes() && levelSection.hasChildNodes()) {
-    removingData([levelSection, levelMenu]);
+    removeData([levelSection, levelMenu]);
   }
   let noteCount = 0;
   let firstNote;
-  for (let [lvlMenuData, missionInfoData] of [ [ ['Main Quests', 'lvlmain-menu'], { missionInfos: queryLevel.main,
-                                              lvlSectID: 'lvlsect-main' } ], [ ['Second Quests', 'lvlsec-menu'],
-                                              { missionInfos: queryLevel.second, lvlSectID: 'lvlsect-sec' } ] ]) {
-                                             //enveloped in array, for ordered processing
-                                             //when overlay show, notesDataContainer still dont have any child does the value should be null
-                                             //to avoid returning true
-    if (missionInfoData.missionInfos) {
+  for (let [lvlMenuName, lvlMenuId, lvlDataBool, lvlDataSect] of [ [ 'Main Quests', 'lvlmain-menu',
+                                                                      lvlCatStatus.main, { lvlSectID: 'lvlsect-main',
+                                                                      retUrl: `/query/mainlevel-${inputValue}` } ],
+                                                                    [ 'Second Quests', 'lvlsec-menu',
+                                                                      lvlCatStatus.second, { lvlSectID: 'lvlsect-sec',
+                                                                      retUrl: `/query/seclevel-${inputValue}` } ] ]) {
+                                                                    //enveloped in array, for ordered processing
+    if (lvlDataBool) {
       noteCount++;
       let lvlMenuCont = document.createElement('span');
-      lvlMenuCont.innerHTML = lvlMenuData[0];
-      lvlMenuCont.id = lvlMenuData[1];
-      lvlMenuCont.addEventListener('click', displayLevelData.bind(missionInfoData))
+      lvlMenuCont.innerHTML = lvlMenuName;
+      lvlMenuCont.id = lvlMenuId;
+      lvlMenuCont.addEventListener('click', displayLevelData.bind(lvlDataSect))
       levelMenu.appendChild(lvlMenuCont);
       if (noteCount === 1) {
         firstNote = lvlMenuCont;
       }
     }
   }
-  firstNote.click();
+  if (firstNote) { //check first if has notes
+    firstNote.click();
+  }
 }
 
 missionQuery(1) //visiting the website; for now default query level is 1

@@ -91,7 +91,7 @@ function genNoteHeader(containerEle, headerEleName, headersData) {
   return containerEle
 }
 
-function removingData(noteData) {
+function removeData(noteData) {
   let noteInfos;
   if (!Array.isArray(noteData)) {
     noteInfos = [noteData]
@@ -106,8 +106,11 @@ function removingData(noteData) {
 }
 
 function closeNotes(noteContainer, noteClassEle, menuContainer=null) {
+  //when overlay show, noteContainer still dont have any child and menuContainer have childnodes(its length is <= 1)
+  //does the value should be null to avoid returning true
   let noteStat = (noteClassEle) ? true : false; // if same note return true
-  if(menuContainer && ((menuContainer.children.length === 1) || noteStat)) { //if single note found or same, don't allowed to close it
+  if(menuContainer && ((menuContainer.children.length === 1) || noteStat)) {
+    //if single note/menu or same note found, don't allowed to close it
     return true
   }
   if (noteContainer) {
