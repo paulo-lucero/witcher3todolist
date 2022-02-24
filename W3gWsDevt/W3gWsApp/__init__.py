@@ -16,6 +16,9 @@ def main_app():
     from W3gWsApp import w3gdbhandl
     w3gdbhandl.regapp_db(w3g_app)
 
+    from W3gWsApp import w3gerhandl
+    w3gerhandl.regapp_errhandl(w3g_app)
+
     from W3gWsApp import w3gquery
     w3g_app.register_blueprint(w3gquery.query_bp)
 

@@ -81,19 +81,18 @@ function closeNotesOverlay(evt) {//closing overlay notes menu
 }
 
 function displayQueryData(questInfos, sect) {
-  let innerSect = () => document.createElement('span'); //arrow function support in steam overlay browser is uncertain
   let mainClass = questInfos.sectItemClass;
+  let noteMenuCls = questInfos.noteMenuCls;
   for (let [menuClass, menuData] of questInfos.fixedData) { // fixed data like questname and level
-    let sectItem = innerSect();
-    sectItem.classList.add(mainClass, menuClass);
-    sectItem.appendChild(menuData);
-    sect.appendChild(sectItem);
+    if (menuData) {
+      let sectItem = custom_createEle('span', null, eleCls=[mainClass, menuClass]);
+      sectItem.appendChild(menuData);
+      sect.appendChild(sectItem);
+   }
   }
   for (let [noteObj, noteBool] of questInfos.dataNotes) { // notes, this data aren't fixed/expected always to have
     if (noteBool) {
-      let sectItem = innerSect();
-      sectItem.classList.add(mainClass, 'mLvlAddtl-menu');
-      sectItem.innerHTML = noteObj.menuName;
+      let sectItem = custom_createEle('span', inhtml=noteObj.menuName, eleCls=[mainClass, noteMenuCls]);
       sectItem.addEventListener('click', noteObj.eventFunc)
       sect.appendChild(sectItem);
     }
@@ -108,6 +107,9 @@ async function displayLevelData(evt) {//main and secondary quests with levels
   if (!sameNote) {
     let noteBody = document.createElement('div');
     noteBody.id = noteId;
+    noteBody.appendChild(genNoteHeader(document.createElement('div'), 'span', [ ['lvlheader-name', 'Quest Name'],
+                                                                                ['lvlheader-lvl', 'Quest Level'],
+                                                                                ['lvlheader-notes', 'Quest Notes'] ]));
     let queryLevel = await queryInfo(this.retUrl);
     for (let missionInfo of queryLevel) {
       noteBody.appendChild(displayQueryData(new addtlNote(missionInfo, missionInfo['info'],
@@ -118,7 +120,7 @@ async function displayLevelData(evt) {//main and secondary quests with levels
   }
 }
 
-async function missionQuery(evt) {
+async function levelQuery(evt) {
   let inputValue;
   if(Number.isInteger(evt)) {
     inputValue = evt;
@@ -129,7 +131,7 @@ async function missionQuery(evt) {
       return
     }
   }
-  let lvlCatStatus = await queryInfo(`/query/levelcat-${inputValue}`);
+  let lvlCatStatus = await queryInfo(`/query/chklevel-${inputValue}`);
   if (levelMenu.hasChildNodes() && levelSection.hasChildNodes()) {
     removeData([levelSection, levelMenu]);
   }
@@ -159,11 +161,55 @@ async function missionQuery(evt) {
   }
 }
 
-missionQuery(1) //visiting the website; for now default query level is 1
+async function displayNlevelData(evt) {
+  let regionSect = evt.currentTarget.parentElement;
+  let regionId = this.regionId;
+  let rBodyCls = this.rBodyCls;
+  let regionBody = regionSect.getElementsByClassName(rBodyCls);
+  if (regionBody.length !== 0) {
+    closeNotes(regionBody[0], false)
+  } else {
+    let regionBody = custom_createEle('div', null, eleCls=rBodyCls);
+    let nLvlInfos = await queryInfo(`/query/nlevel-rgid-${regionId}`);
+    regionBody.appendChild(genNoteHeader(document.createElement('div'), 'span', [ ['nlvlheader-name', 'Quest Name'],
+                                                                                  ['nlvlheader-notes', 'Quest Notes'] ]));
+    for (let nLvlInfo of nLvlInfos) {
+      regionBody.appendChild(displayQueryData(new addtlNote(nLvlInfo, nLvlInfo.info,
+                                                            displayAffected, showNotesOverlay),
+                                              document.createElement('div')));
+    }
+    regionSect.appendChild(regionBody);
+  }
+}
 
-queryInput.addEventListener('keyup', missionQuery);
+async function nLevelQuery() {
+  let regionsInfos = await queryInfo('/query/nlevel-regions');
+  for (let regionInfo of regionsInfos) {
+    let regionCount = regionInfo.quest_count;
+    let regionName = regionInfo.region_name;
+    let regionSect = custom_createEle('div', null, eleCls='region-section');
+    if (regionCount) {
+      allQueryData[regionName] = regionCount;
+    }
+    let regionMenu = custom_createEle('div', null, eleCls='nlvl-title');
+    for (let [rTitle, rCls] of [[regionName, 'region-name'], [regionCount, 'region-count']]) {
+      regionMenu.appendChild(custom_createEle('span', rTitle, eleCls=rCls));
+    }
+    regionMenu.addEventListener('click', displayNlevelData.bind({regionId:regionInfo.id, rBodyCls:'nlvl-body'}));
+    regionSect.appendChild(regionMenu);
+    nlevelSection.appendChild(regionSect);
+  }
+}
+
+levelQuery(1) //visiting the website; for now default query level is 1
+
+nLevelQuery() //non leveled quests
+
+queryInput.addEventListener('keyup', levelQuery);
 
 notesBody.addEventListener('click', closeNotesOverlay);
+
+
 
 // TODO:
 //  -!!

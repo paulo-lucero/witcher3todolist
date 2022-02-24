@@ -28,6 +28,10 @@
     <div>
       <h2>Test Section:</h2>
       <button type="button" onclick="alert('Hello world!')">Click Me!</button>
+      <div>
+        <div id="color-test">Async Test - Click Here:</div>
+        <div id="color-body"></div>
+      </div>
       <p> Check venv path: <a href="{{ url_for('testingenv.check_envpath') }}" target="_blank">Click Me!</a></p>
       <p> Check working path: <a href="{{ url_for('testingenv.check_apppath') }}" target="_blank">Click Me!</a></p>
       <p> Check if debug mode is enabled: <a href="{{ url_for('testingenv.check_debugmode') }}" target="_blank">Test Error!</a></p>
@@ -36,5 +40,6 @@
   </div>
   <script src="{{ url_for('static', filename='w3gdefs.js') }}"></script>
   <script src="{{ url_for('static', filename='w3gretrieve.js') }}"></script>
+  <script src="{{ url_for('static', filename='w3gasynctest.js') }}"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import flask
-from flask import Blueprint, current_app
+from flask import Blueprint, current_app, jsonify
 import os
 
 tests_bp = Blueprint('testingenv', __name__, url_prefix='/testingenv')
@@ -25,3 +25,13 @@ def check_configdb():
              f'<p> System Database Path: {filedb_path} </p>'
              f'<p> If Same Path: {filedb_path == configdb_path} </p>'
            )
+
+@tests_bp.route('/colors')
+def asynctest_colorquery():
+    return jsonify(['Blue', 'Chartreuse', 'Coral', 'DarkRed', 'Salmon'])
+
+@tests_bp.route('/clr-<color_name>')
+def asynctest_timeoutquery(color_name):
+    color_timeouts = {'Blue': 5000, 'Chartreuse': 10000, 'Coral': 15000,
+                      'DarkRed': 20000, 'Salmon': 25000}
+    return jsonify(color_timeouts[color_name])

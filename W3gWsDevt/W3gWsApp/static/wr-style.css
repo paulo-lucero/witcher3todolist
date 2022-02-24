@@ -89,23 +89,31 @@ body {
   margin-bottom: .3vw;
 }
 
-.mQuest-Data, .mAffitem-Qname {
+.quest-data, .affitem-name {
   display: inline-block;
   width: 30%;
   word-wrap: break-word;
 }
 
-.mQuest-level, .mAffitem-Qlvl {
+.quest-level, .affitem-lvl {
   display: inline-block;
   width: 30%;
 }
 
-.mLvlAddtl-menu {
+.notes-data span {
+  border-right-style: solid;
+}
+
+.notes-data span:last-child {
+  border-right-style: none;
+}
+
+.notes-data {
   display: inline-block;
   width: 8.5%;
 }
 
-.mLvlAddtl-menu:hover {
+.notes-data:hover {
   font-weight: bold;
   cursor: pointer;
 }

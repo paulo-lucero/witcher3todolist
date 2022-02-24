@@ -13,7 +13,7 @@ def conn_w3gdb():
     if 'w3gdb' not in g:
         g.w3gdb = sqlite3.connect(current_app.config['DATABASE'])
         g.w3gdb.row_factory = sqlite3.Row
-    click.echo('Database Connected')
+    click.echo(click.style('Database Connected', fg='bright_blue'))
     return g.w3gdb
 
 def close_w3gdb(e=None):
@@ -21,7 +21,7 @@ def close_w3gdb(e=None):
     w3gdb = g.pop('w3gdb', None)
     if w3gdb is not None:
         w3gdb.close()
-        click.echo('Database Closed')
+        click.echo(click.style('Database Closed', fg='bright_green'))
 
 @click.command('init-db')
 @with_appcontext
