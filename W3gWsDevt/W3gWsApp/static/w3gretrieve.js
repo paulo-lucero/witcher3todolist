@@ -11,8 +11,8 @@ async function displayAffected(evt) {
       noteli = document.createElement('li');
       let itemClasses = kcData.noteItems;
       noteUl.appendChild(displayQueryData(new addtlNote(dataNote, dataNote.info, displayAffected,
-                                                        showNotesOverlay, urlClass=itemClasses[0][0],
-                                                        levelClass=itemClasses[1][0]),
+                                                        showNotesOverlay, showDataConfirm,
+                                                        urlClass=itemClasses[0][0], levelClass=itemClasses[1][0]),
                                             noteli));
     }
     sect.appendChild(noteUl)
@@ -42,13 +42,11 @@ async function displayNote(evt) {
       noteUl.appendChild(noteli);
     }
     notesDataContainer.appendChild(noteUl);
-    mainNotes.appendChild(notesDataContainer);
   }
 }
 
 function showNotesOverlay(evt) {
   let noteCount = 0;
-  let firstNote;
   for (let [notesName, notesBool] of this.notes) {
     if (notesBool) {
       noteCount++;
@@ -59,13 +57,9 @@ function showNotesOverlay(evt) {
       kcData.dataId = this.dataId;
       noteMenu.addEventListener('click', displayNote.bind(kcData));
       notesMenuContainer.appendChild(noteMenu);
-      if (noteCount === 1) {
-        firstNote = noteMenu;
-      }
     }
   }
-  firstNote.click();
-  mainNotes.appendChild(notesMenuContainer);
+  notesMenuContainer.firstChild.click();
   guideBody.style.filter = 'blur(5px)';
   notesBody.style.display = 'flex';
 }
@@ -100,116 +94,156 @@ function displayQueryData(questInfos, sect) {
   return sect
 }
 
-async function displayLevelData(evt) {//main and secondary quests with levels
-  let noteId = this.lvlSectID;
-  let sameNote = closeNotes(levelSection.firstChild, document.getElementById(noteId),
-                            menuContainer=(levelSection.hasChildNodes()) ? evt.currentTarget.parentElement : null)
-  if (!sameNote) {
-    let noteBody = document.createElement('div');
-    noteBody.id = noteId;
-    noteBody.appendChild(genNoteHeader(document.createElement('div'), 'span', [ ['lvlheader-name', 'Quest Name'],
-                                                                                ['lvlheader-lvl', 'Quest Level'],
-                                                                                ['lvlheader-notes', 'Quest Notes'] ]));
-    let queryLevel = await queryInfo(this.retUrl);
-    for (let missionInfo of queryLevel) {
-      noteBody.appendChild(displayQueryData(new addtlNote(missionInfo, missionInfo['info'],
-                                                              displayAffected, showNotesOverlay),
-                                                document.createElement('div')))
+async function showDataConfirm(evt) {
+  if (this.show) {
+    infoSectInfos.regionId = this.regionId;
+    if (!(infoSectInfos.regionId === this.regionId)) {
+      throw `Not same region id: info obj - ${infoSectInfos.regionId} | region id - ${this.regionId}`
     }
-    levelSection.appendChild(noteBody);
+    if (infoSectInfos.getInfo('body', notIncl=[ovrLdBody, miniInfoBody]).some(infoBody => infoBody.hasChildNodes())) {
+      let showTitle = (infoMenu) => {
+        infoSectInfos.opnCrl.appendChild(custom_createEle('div', infoMenu.innerHTML, 'title-crucial'))
+      }
+      infoSectInfos.getInfo('menu', notIncl=[ovrLdMenu, miniInfoMenu]).forEach(showTitle);
+      stylng(guideBody, 'filter', 'blur(5px)');
+      stylng(infoSectInfos.conBody, 'display', 'flex')
+    } else {
+      infoSectInfos.bttnConf.click();
+    }
+  } else {
+    if (stylng(infoSectInfos.conBody, 'display') !== 'none') {
+      stylng(infoSectInfos.conBody, 'display', 'none');
+      stylng(guideBody, 'filter', false)
+    }
+    if (this.confirm) {
+      removeData(infoSectInfos.getInfo('body'));
+      let questInfos = await queryInfo(`/query/second-quests-regid-${infoSectInfos.regionId}`)
+      for (let questInfo of questInfos) {
+        miniInfoBody.appendChild(displayQueryData(new addtlNote(questInfo, questInfo.info, displayAffected, showNotesOverlay, showDataConfirm),
+                                                  document.createElement('div')));
+      }
+      undsplyEle(infoSectInfos.getInfo('sect'));
+    }
+    removeData(infoSectInfos.opnCrl)
   }
 }
 
-async function levelQuery(evt) {
-  let inputValue;
-  if(Number.isInteger(evt)) {
-    inputValue = evt;
-  } else {
-    if(evt.key === 'Enter') { //querying level
-      inputValue = queryInput.value;
-    } else {
-      return
+async function retreiveQuestData(evt) {
+  let qNoteClass = this.qBodyClass;
+  let checkSameNote = this.checkSameNote;
+  let dataContainer = this.dataContainer;
+  let sameNote = closeNotes([dataContainer], checkSameNote ? document.querySelector(`.${qNoteClass}`) : dataContainer.hasChildNodes(),
+                            menuContainer = checkSameNote ? (dataContainer.hasChildNodes() ? pageQuestMenu : null) : null);
+
+  if (!sameNote) {
+    let questInfos = await queryInfo(this.urlQuery);
+    dataContainer.className = qNoteClass;
+    for (let questInfo of questInfos) {
+      dataContainer.appendChild(displayQueryData(new addtlNote(questInfo, questInfo.info, displayAffected,
+                                                               showNotesOverlay, showDataConfirm), document.createElement('div')));
     }
   }
-  let lvlCatStatus = await queryInfo(`/query/chklevel-${inputValue}`);
-  if (levelMenu.hasChildNodes() && levelSection.hasChildNodes()) {
-    removeData([levelSection, levelMenu]);
+}
+
+async function retreiveRegionData(evt) {
+  let qNoteClass = this.qBodyClass;
+  let sameNote = closeNotes([pageQuestBody], document.querySelector(`.${qNoteClass}`),
+                            menuContainer = pageQuestBody.hasChildNodes() ? pageQuestMenu : null);
+  if(!sameNote) {
+    let regionInfos = await queryInfo(this.urlQuery);
+    pageQuestBody.className = qNoteClass;
+    for (let regionInfo of regionInfos) {
+      let rBodyCls = 'region-body';
+      let regionMenu = custom_createEle('div', [
+        custom_createEle('span', regionInfo.region_name, eleCls='region-name'),
+        custom_createEle('span', regionInfo.quest_count, eleCls='quest-count')
+      ], eleCls='region-menu');
+      let regionBody = custom_createEle('div', null, eleCls=rBodyCls);
+      regionMenu.addEventListener('click', retreiveQuestData.bind({
+        qBodyClass: rBodyCls,
+        checkSameNote: false,
+        dataContainer: regionBody,
+        urlQuery: `/query/second-quests-regid-${regionInfo.id}`
+      }));
+      let regionSect = custom_createEle('div', [regionMenu, regionBody], eleCls='region-sect');
+      pageQuestBody.appendChild(regionSect);
+    }
   }
-  let noteCount = 0;
-  let firstNote;
-  for (let [lvlMenuName, lvlMenuId, lvlDataBool, lvlDataSect] of [ [ 'Main Quests', 'lvlmain-menu',
-                                                                      lvlCatStatus.main, { lvlSectID: 'lvlsect-main',
-                                                                      retUrl: `/query/mainlevel-${inputValue}` } ],
-                                                                    [ 'Second Quests', 'lvlsec-menu',
-                                                                      lvlCatStatus.second, { lvlSectID: 'lvlsect-sec',
-                                                                      retUrl: `/query/seclevel-${inputValue}` } ] ]) {
-                                                                    //enveloped in array, for ordered processing
-    if (lvlDataBool) {
-      noteCount++;
-      let lvlMenuCont = document.createElement('span');
-      lvlMenuCont.innerHTML = lvlMenuName;
-      lvlMenuCont.id = lvlMenuId;
-      lvlMenuCont.addEventListener('click', displayLevelData.bind(lvlDataSect))
-      levelMenu.appendChild(lvlMenuCont);
-      if (noteCount === 1) {
-        firstNote = lvlMenuCont;
+}
+
+async function checkQuestsStatus() {
+  let menusData = [
+    [
+      'main',
+      'Main Quests',
+      'qmain-menu',
+      retreiveQuestData,
+      {
+        urlQuery: '/query/main-quests-info',
+        qBodyClass: 'qmain-body',
+        dataContainer: pageQuestBody,
+        checkSameNote: true
+      }
+    ],
+    [
+      'second',
+      'Second Quests',
+      'qsec-menu',
+      retreiveRegionData,
+      {
+        urlQuery: '/query/regions-info',
+        qBodyClass: 'qsec-body',
+      }
+    ]
+  ];
+  let questsStatus = await queryInfo('/query/check-quests-info');
+  for (let [questCat, qMenuName, qMenuClass,menuFunc, bindData] of menusData) {
+    if (questsStatus[questCat]) {
+      let menuEle = custom_createEle('span', qMenuName, eleCls=qMenuClass);
+      menuEle.addEventListener('click', menuFunc.bind(bindData));
+      pageQuestMenu.appendChild(menuEle);
+    }
+  }
+  pageQuestMenu.firstChild.click();
+}
+
+async function retreiveCrucialData(evt) {
+  if (evt.key !== 'Enter') {
+    return
+  }
+  let queryLevel = parseInt(queryInput.value);
+  let qCrucialInfos = await queryInfo(`/query/crucial-quests-qrylvl-${queryLevel}`);
+  removeData(infoSectInfos.getInfo('body'));
+  if (qCrucialInfos) {
+    let hRiskBasis = queryLevel - 5;
+    let lRiskBasis = queryLevel - 2;
+    for (let qCrucialInfo of qCrucialInfos) {
+      let questInfo = qCrucialInfo.info;
+      let questLevel = questInfo.r_level;
+      let scvgList = [questInfo.category_id === 4, scvgBody];
+      let highList = [!scvgList[0] && hRiskBasis === questLevel, hRiskBody];
+      let lowList = [!scvgList[0] && !highList[0] && (questLevel <= lRiskBasis && questLevel > hRiskBasis), lRiskBody];
+      let ovrLdList = [!scvgList[0] && !highList[0] && !lowList[0] && questLevel < hRiskBasis, ovrLdBody];
+      for (let [statusBool, infoBody] of [scvgList, highList, lowList, ovrLdList]) {
+        if (statusBool) {
+          infoBody.appendChild(displayQueryData(new addtlNote(qCrucialInfo, questInfo, displayAffected, showNotesOverlay, showDataConfirm),
+                                                document.createElement('div')));
+          break
+        }
       }
     }
   }
-  if (firstNote) { //check first if has notes
-    firstNote.click();
-  }
+  undsplyEle(infoSectInfos.getInfo('sect'));
 }
 
-async function displayNlevelData(evt) {
-  let regionSect = evt.currentTarget.parentElement;
-  let regionId = this.regionId;
-  let rBodyCls = this.rBodyCls;
-  let regionBody = regionSect.getElementsByClassName(rBodyCls);
-  if (regionBody.length !== 0) {
-    closeNotes(regionBody[0], false)
-  } else {
-    let regionBody = custom_createEle('div', null, eleCls=rBodyCls);
-    let nLvlInfos = await queryInfo(`/query/nlevel-rgid-${regionId}`);
-    regionBody.appendChild(genNoteHeader(document.createElement('div'), 'span', [ ['nlvlheader-name', 'Quest Name'],
-                                                                                  ['nlvlheader-notes', 'Quest Notes'] ]));
-    for (let nLvlInfo of nLvlInfos) {
-      regionBody.appendChild(displayQueryData(new addtlNote(nLvlInfo, nLvlInfo.info,
-                                                            displayAffected, showNotesOverlay),
-                                              document.createElement('div')));
-    }
-    regionSect.appendChild(regionBody);
-  }
-}
-
-async function nLevelQuery() {
-  let regionsInfos = await queryInfo('/query/nlevel-regions');
-  for (let regionInfo of regionsInfos) {
-    let regionCount = regionInfo.quest_count;
-    let regionName = regionInfo.region_name;
-    let regionSect = custom_createEle('div', null, eleCls='region-section');
-    if (regionCount) {
-      allQueryData[regionName] = regionCount;
-    }
-    let regionMenu = custom_createEle('div', null, eleCls='nlvl-title');
-    for (let [rTitle, rCls] of [[regionName, 'region-name'], [regionCount, 'region-count']]) {
-      regionMenu.appendChild(custom_createEle('span', rTitle, eleCls=rCls));
-    }
-    regionMenu.addEventListener('click', displayNlevelData.bind({regionId:regionInfo.id, rBodyCls:'nlvl-body'}));
-    regionSect.appendChild(regionMenu);
-    nlevelSection.appendChild(regionSect);
-  }
-}
-
-levelQuery(1) //visiting the website; for now default query level is 1
-
-nLevelQuery() //non leveled quests
-
-queryInput.addEventListener('keyup', levelQuery);
+checkQuestsStatus();
 
 notesBody.addEventListener('click', closeNotesOverlay);
 
+queryInput.addEventListener('keyup', retreiveCrucialData);
 
+infoSectInfos.bttnConf.addEventListener('click', showDataConfirm.bind({show:false, confirm:true}));
+infoSectInfos.bttnCanl.addEventListener('click', showDataConfirm.bind({show:false, confirm:false}));
 
 // TODO:
 //  -!!

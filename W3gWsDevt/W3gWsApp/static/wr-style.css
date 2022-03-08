@@ -3,7 +3,7 @@ body {
   background-color: #EEEEEE;
 }
 
-#qnotes-body {
+#qnotes-body, #confirm-body {
   display: none;
   align-items: center;
   justify-content: center;
@@ -17,6 +17,12 @@ body {
 #qnotes-overlay {
   width: 75vw;
   height: 75vh;
+  background-color: #f8f8ff;
+}
+
+#confirm-overlay {
+  width: 30vw;
+  height: 30vh;
   background-color: #f8f8ff;
 }
 
@@ -44,7 +50,7 @@ body {
   height: 100%; /*Later: adaptive, height value changes, might need to use a function e.g. javascript */
 }
 
-#level-section {
+#quests-section {
   float: left;
   position: relative;
   box-sizing: border-box;
@@ -53,7 +59,7 @@ body {
   padding: 10px 20px;
 }
 
-#level-section::after {
+#quests-section::after {
   content: '';
   position: absolute;
   right: -.5px;
@@ -63,7 +69,7 @@ body {
   z-index: 1;
 }
 
-#nlevel-section {
+#info-section {
   float: left;
   position: relative;
   box-sizing: border-box;
@@ -72,7 +78,7 @@ body {
   padding: 10px 20px;
 }
 
-#nlevel-section::after {
+#info-section::after {
   content: '';
   position: absolute;
   left: -.5px;
@@ -89,15 +95,23 @@ body {
   margin-bottom: .3vw;
 }
 
+#scavenger-section,
+#highrisk-section,
+#lowrisk-section,
+#overlvl-section,
+#minisec-section {
+  display: none;
+}
+
 .quest-data, .affitem-name {
   display: inline-block;
-  width: 30%;
+  width: 35%;
   word-wrap: break-word;
 }
 
 .quest-level, .affitem-lvl {
   display: inline-block;
-  width: 30%;
+  width: 10%;
 }
 
 .notes-data span {
@@ -110,7 +124,7 @@ body {
 
 .notes-data {
   display: inline-block;
-  width: 8.5%;
+  width: 17%;
 }
 
 .notes-data:hover {

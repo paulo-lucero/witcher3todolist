@@ -5,87 +5,38 @@ from W3gWsApp import w3gdbhandl
 
 query_bp = Blueprint('query', __name__, url_prefix='/query')
 
-@query_bp.route('/chklevel-<int:level_info>')
-def levelcategory_bool(level_info):
+@query_bp.route('/check-quests-info')
+def quests_data_bool():
     conn_db = w3gdbhandl.conn_w3gdb()
     cur_db = conn_db.cursor()
-    if not isinstance(level_info, int):
-        raise TypeError(f'Received request data type: {type(level_info)}')
-    else:
-        click.echo(f'Checking Quest Data Status - Queried level: {level_info}')
-        if level_info < 1: #for level request of below 1, to avoid negative level
-            level_info = 6
-        else:
-            level_info += 5
-        click.echo(f'Checking Quest Data Status - Processed level: {level_info}')
     query_result = {}
     for key_name, query_basis in [['main', '='], ['second', '!=']]:
         cur_db.execute(f'''SELECT all_quests.id FROM all_quests
-                           INNER JOIN level ON all_quests.level_id = level.id
-                           WHERE all_quests.status_id = 1 AND
-                           all_quests.category_id {query_basis} 1 AND
-                           level.r_level <= ?''', (level_info, ))
+                           WHERE all_quests.status_id = 1
+                           AND all_quests.category_id {query_basis} 1''')
         if cur_db.fetchall():
             query_result[key_name] = True
         else:
             query_result[key_name] = False
     return jsonify(query_result)
 
-@query_bp.route('/mainlevel-<int:level_info>')
-def mainlevel_info(level_info):
+@query_bp.route('/main-quests-info')
+def main_quests_info():
     conn_db = w3gdbhandl.conn_w3gdb()
     cur_db = conn_db.cursor()
-    if not isinstance(level_info, int):
-        raise TypeError(f'Received request data type: {type(level_info)}')
+    cur_db.execute(f'''SELECT all_quests.id, quest_name, quest_url, level.r_level, region_id
+                       FROM all_quests LEFT JOIN level ON level.id = all_quests.level_id
+                       WHERE all_quests.status_id = 1 AND all_quests.category_id = 1
+                       ORDER BY all_quests.id ASC''')
+    quest_query = cur_db.fetchall()
+    if quest_query:
+        quest_data = w3gdbhandl.quest_consoData(cur_db, quest_query)
     else:
-        click.echo(f'Retrieving Main Quest Data - Queried Level: {level_info}')
-        if level_info < 1: #for level request of below 1, to avoid negative level
-            level_info = 6
-        else:
-            level_info += 5
-        click.echo(f'Retrieving Main Quest Data - Processed Level: {level_info}')
-        cur_db.execute('''SELECT all_quests.id, quest_name, quest_url, level.r_level
-                          FROM all_quests LEFT JOIN level ON level.id = all_quests.level_id
-                          WHERE all_quests.category_id = 1 AND all_quests.status_id = 1 AND
-                                all_quests.id <= (SELECT MAX(all_quests.id) FROM all_quests
-                                                  LEFT JOIN level ON level.id = all_quests.level_id
-                                                  WHERE all_quests.category_id = 1 AND all_quests.status_id = 1
-                                                  AND level.r_level <= ?)
-                          ORDER BY all_quests.id ASC''', (level_info, ))
-        mquest_query = cur_db.fetchall()
-        if mquest_query:
-            mquest_data = w3gdbhandl.quest_consoData(cur_db, mquest_query)
-        else:
-            mquest_data = None
-    return jsonify(mquest_data)
+        quest_data = None
+    return jsonify(quest_data)
 
-@query_bp.route('/seclevel-<int:level_info>')
-def seclevel_info(level_info):
-    conn_db = w3gdbhandl.conn_w3gdb()
-    cur_db = conn_db.cursor()
-    if not isinstance(level_info, int):
-        raise TypeError(f'Received request data type: {type(level_info)}')
-    else:
-        click.echo(f'Retrieving Secondary Quest Data - Queried Level: {level_info}')
-        if level_info < 1: #for level request of below 1, to avoid negative level
-            level_info = 6
-        else:
-            level_info += 5
-        click.echo(f'Retrieving Secondary Quest Data - Processed Level: {level_info}')
-        cur_db.execute('''SELECT all_quests.id, quest_name, quest_url, level.r_level
-                          FROM all_quests INNER JOIN level ON level.id = all_quests.level_id
-                          WHERE all_quests.category_id != 1 AND all_quests.status_id = 1 AND
-                          level.r_level <= ? ORDER BY level.r_level ASC''', (level_info, ))
-        squest_query = cur_db.fetchall()
-        if squest_query:
-            squest_data = w3gdbhandl.quest_consoData(cur_db, squest_query)
-        else:
-            squest_data = None
-
-    return jsonify(squest_data)
-
-@query_bp.route('/nlevel-regions')
-def nonlevel_regions_info():
+@query_bp.route('/regions-info')
+def regions_info():
     conn_db = w3gdbhandl.conn_w3gdb()
     cur_db = conn_db.cursor()
     cur_db.execute('SELECT region.id, region.region_name FROM region ORDER BY region.id ASC')
@@ -96,7 +47,6 @@ def nonlevel_regions_info():
         cur_db.execute('''SELECT all_quests.id FROM all_quests
                           WHERE all_quests.status_id = 1
                           AND all_quests.category_id != 1
-                          AND all_quests.level_id IS NULL
                           AND all_quests.region_id = ?''', (region_query['id'], ))
         quest_ids = cur_db.fetchall()
         if quest_ids:
@@ -106,16 +56,40 @@ def nonlevel_regions_info():
         all_regions_data.append(regions_data)
     return jsonify(all_regions_data)
 
-@query_bp.route('/nlevel-rgid-<int:id_info>')
-def nonlevel_quests_info(id_info):
+@query_bp.route('/second-quests-regid-<int:region_id>')
+def second_quests_info(region_id):
     conn_db = w3gdbhandl.conn_w3gdb()
     cur_db = conn_db.cursor()
-    click.echo(f'Retrieving Non-level Quest/s Data - Region ID: {id_info}')
-    cur_db.execute('''SELECT all_quests.id, quest_name, quest_url FROM all_quests
-                      WHERE all_quests.category_id != 1 AND all_quests.status_id = 1
-                      AND all_quests.level_id IS NULL AND all_quests.region_id = ?
-                      ORDER BY all_quests.id ASC''', (id_info, ))
-    return jsonify(w3gdbhandl.quest_consoData(cur_db, cur_db.fetchall()))
+    cur_db.execute(f'''SELECT all_quests.id, quest_name, quest_url, level.r_level
+                       FROM all_quests LEFT JOIN level ON level.id = all_quests.level_id
+                       WHERE all_quests.status_id = 1 AND all_quests.category_id != 1
+                       AND all_quests.region_id = ? ORDER BY level.r_level NULLS FIRST,
+                       level.r_level ASC''', (region_id, ))
+    quest_query = cur_db.fetchall()
+    if quest_query:
+        quest_data = w3gdbhandl.quest_consoData(cur_db, quest_query)
+    else:
+        quest_data = None
+    return jsonify(quest_data)
+
+@query_bp.route('/crucial-quests-qrylvl-<int:level_info>')
+def crucial_quests_info(level_info):
+    conn_db = w3gdbhandl.conn_w3gdb()
+    cur_db = conn_db.cursor()
+    click.echo(f'Retrieving crucial Quest Data - Queried Level: {level_info}')
+    if level_info < 4:
+        return jsonify(None)
+    cur_db.execute('''SELECT all_quests.id, quest_name, quest_url, level.r_level, all_quests.category_id
+                      FROM all_quests INNER JOIN level ON level.id = all_quests.level_id
+                      WHERE all_quests.status_id = 1 AND level.r_level <= ?
+                      ORDER BY level.r_level ASC''', (level_info, ))
+    quest_query = cur_db.fetchall()
+    if quest_query:
+        quest_data = w3gdbhandl.quest_consoData(cur_db, quest_query)
+    else:
+        quest_data = None
+
+    return jsonify(quest_data)
 
 @query_bp.route('/aff-id-<int:id_info>')
 def affected_info(id_info):

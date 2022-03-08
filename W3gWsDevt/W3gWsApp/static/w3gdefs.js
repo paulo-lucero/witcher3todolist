@@ -1,16 +1,48 @@
 const queryInput = document.querySelector('#quest-query input[type="number"]');
-const levelMenu = document.getElementById('lvlsect-menu');
-const levelSection = document.getElementById('lvlsect-body');
-const nlevelSection = document.getElementById('nlevel-section');
+const pageQuestMenu = document.getElementById('qsect-menu');
+const pageQuestBody = document.getElementById('qsect-body');
+const infoQuestBody = document.getElementById('info-section');
 const guideBody = document.getElementById('w3g-body');
 const notesBody = document.getElementById('qnotes-body');
 const mainNotes = document.getElementById('qnotes-overlay');
 const notesMenuContainer = document.getElementById('qnotes-menus');
 const notesDataContainer = document.getElementById('qnotes-data');
+const scvgSec = document.getElementById('scavenger-section');
+const scvgMenu = document.getElementById('scavenger-menu');
+const scvgBody = document.getElementById('scavenger-body');
+const hRiskSec = document.getElementById('highrisk-section');
+const hRiskMenu = document.getElementById('highrisk-menu');
+const hRiskBody = document.getElementById('highrisk-body');
+const lRiskSec = document.getElementById('lowrisk-section');
+const lRiskMenu = document.getElementById('lowrisk-menu');
+const lRiskBody = document.getElementById('lowrisk-body');
+const ovrLdSec = document.getElementById('overlvl-section');
+const ovrLdMenu = document.getElementById('overlvl-menu');
+const ovrLdBody = document.getElementById('overlvl-body');
+const miniInfoSec = document.getElementById('minisec-section');
+const miniInfoMenu = document.getElementById('minisec-menu');
+const miniInfoBody = document.getElementById('minisec-body');
+const infoSectInfos = {
+  regionId: null,
+  conBody: document.getElementById('confirm-body'),
+  opnCrl: document.getElementById('opened-crucial'),
+  bttnConf: document.getElementById('confirm-button'),
+  bttnCanl: document.getElementById('cancel-button'),
+  infoSects: {
+    sect: [scvgSec, hRiskSec, lRiskSec, ovrLdSec, miniInfoSec],
+    menu: [scvgMenu, hRiskMenu, lRiskMenu, ovrLdMenu, miniInfoMenu],
+    body: [scvgBody, hRiskBody, lRiskBody, ovrLdBody, miniInfoBody]
+  },
+  getInfo: function (typeInfo, notIncl=false) {
+    //notIncl is an array
+    return notIncl ? this.infoSects[typeInfo].filter(infoEle => !(notIncl.indexOf(infoEle) > -1)) : this.infoSects[typeInfo]
+  }
+};
 const menuNames = { //for easy code revision later
   affName: 'Affected',
   misName: 'Missable',
   enmName: 'Enemies',
+  regName: 'Region Quests',
   genNoteName: function(notesArray) {
     let noteEles = [];
     for (let [noteKey, noteBool] of notesArray) {
@@ -61,7 +93,7 @@ async function queryInfo(queryUrl) {
     throw new Error(`HTTP error! status: ${getInfo.status}`);
   } else {
     jsoniedInfo = await getInfo.json();
-    if (typeof jsoniedInfo === 'object' && 'error' in jsoniedInfo) {
+    if (jsoniedInfo && typeof jsoniedInfo === 'object' && 'error' in jsoniedInfo) {
       let errBody = 'code' in jsoniedInfo ? jsoniedInfo.code : jsoniedInfo.stringnified;
       throw new Error(`${jsoniedInfo.error}! status:\n ${errBody}`);
     }
@@ -113,7 +145,7 @@ notesData[menuNames.enmName] = new genNotesData(
   menuClass='enm-menu'
 );
 
-function addtlNote(consoData, dataInfo, affFunc, noteFunc,
+function addtlNote(consoData, dataInfo, affFunc, noteFunc, confFunc,
                    urlClass='quest-data', levelClass='quest-level',
                    noteCls='notes-data', noteNames=menuNames) {
   this.sectItemClass = consoData.cut ? 'cutoff-quest' : 'normal-quest',
@@ -137,7 +169,17 @@ function addtlNote(consoData, dataInfo, affFunc, noteFunc,
        ),
        menuName: noteNames.genNoteName([ ['misName', consoData.qwt], ['enmName', consoData.enm] ])
      },
-     (consoData.qwt || consoData.enm) ? true : false]
+     (consoData.qwt || consoData.enm)],
+     [{
+        eventFunc: confFunc.bind(
+          {
+            regionId: 'region_id' in dataInfo ? dataInfo.region_id : null,
+            show: true
+          }
+        ),
+        menuName: noteNames.regName
+      },
+      'region_id' in dataInfo]
   ]
 }
 
@@ -169,6 +211,7 @@ function removeData(noteData) {
 }
 
 function closeNotes(noteContainer, noteClassEle, menuContainer=null) {
+  //can use closeNotes to call remove childnodes, just need to pass the noteContainer in an Array
   //when overlay show, noteContainer still dont have any child and menuContainer have childnodes(its length is <= 1)
   //does the value should be null to avoid returning true
   let noteStat = (noteClassEle) ? true : false; // if same note return true
@@ -176,8 +219,12 @@ function closeNotes(noteContainer, noteClassEle, menuContainer=null) {
     //if single note/menu or same note found, don't allowed to close it
     return true
   }
-  if (noteContainer) {
-    noteContainer.remove();
+  if (Array.isArray(noteContainer)) {
+    removeData(noteContainer);
+  } else {
+    if (noteContainer) {
+      noteContainer.remove();
+    }
   }
   return noteStat
 }
@@ -203,4 +250,29 @@ function custom_createEle(eleName, inhtml, eleCls=null, idName=null) {
     eleObj.id = idName;
   }
   return eleObj
+}
+
+function stylng(elmt, prty=null, getp=true) {// Window.getComputedStyle() is read-only
+  if (prty && getp === false) {
+    elmt.style.removeProperty(prty);
+  } else if (getp !== true) {
+    elmt.style[prty] = getp;
+  }
+  return elmt.style[prty] ? elmt.style[prty] : window.getComputedStyle(elmt).getPropertyValue(prty)
+}
+
+function undsplyEle(bodyConts) {
+  for (let bodyCont of bodyConts) {
+    let isDplyNone = stylng(bodyCont, 'display') === 'none';
+    let isHasNotes = bodyCont.querySelector('div[id*=\"body\"]').hasChildNodes();
+    if (isDplyNone && isHasNotes) {
+      stylng(bodyCont, 'display', 'unset')
+    } else if (!isDplyNone && !isHasNotes) { //if "else" is use, the bodyCont will be none if the condition = isDplyNone is False while isHasNotes is True
+      stylng(bodyCont, 'display', 'none')
+      //possible results - false:
+      // true && false = unset && with childs - ok
+      // false && true = none && w/o childs - ok
+      // false && false = none && with child - ok
+    }
+  }
 }
