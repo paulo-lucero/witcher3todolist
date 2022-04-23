@@ -7,4 +7,5 @@ W3gVrenv/
 __pycache__/
 W3gWsDevt/*.bat
 W3gWsProto/
-w3gasynctest.js
+w3g*test.js
+.jshintrc

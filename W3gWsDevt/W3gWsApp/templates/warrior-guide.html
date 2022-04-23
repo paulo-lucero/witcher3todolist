@@ -8,8 +8,23 @@
 <body>
   <div id="qnotes-body">
     <div id="qnotes-overlay">
+      <h2 id="qnotes-header"></h2>
       <div id="qnotes-menus"></div>
       <div id="qnotes-data"></div>
+      <div id="qdone-data">
+        <div id="qdone-bttns">
+          <button id="undone-all" type="button">Mark as "undone" all quests</button>
+          <span class="select-mode">Select Quest</span>
+          <span class="cancel-mode">Cancel Selection</span>
+        </div>
+        <div id="done-quests">
+          <div id="done-menu">
+            <span id="recent-done">Recently</span>
+            <span id="all-done">All</span>
+          </div>
+          <div id="done-data-cont"></div>
+        </div>
+      </div>
     </div>
   </div>
   <div id="confirm-body">
@@ -25,7 +40,14 @@
   <div id="w3g-body">
     <div id="quest-query">
       <input type="text" value="Search quest here....">
-      <input type="number" title="Insert Level here..." min="0" value="1">
+      <span id="level-query">
+        <input type="text" title="Insert Level here..." value="1">
+        <span id="input-arrowup" ></span>
+        <span id="input-arrowdown" ></span>
+      </span>
+      <span class="select-mode">Select Quest</span>
+      <span class="cancel-mode">Cancel Selection</span>
+      <span id="done-display">Show Done Quests</span>
     </div>
     <div id="page-section">
       <div id="quests-section">
@@ -33,25 +55,19 @@
         <div id="qsect-body"></div>
       </div>
       <div id="info-section">
-        <div id="scavenger-section">
-          <div id="scavenger-menu" >Scavenger Quests</div>
-          <div id="scavenger-body" ></div>
+        <div class="info-subsect">
+          <div class="info-menu">Scavenger Quests</div>
         </div>
-        <div id="highrisk-section">
-          <div id="highrisk-menu" >Overlevel - High vulnerable</div>
-          <div id="highrisk-body" ></div>
+        <div class="info-subsect">
+          <div class="info-menu">Overlevel - High vulnerable</div>
         </div>
-        <div id="lowrisk-section">
-          <div id="lowrisk-menu" >Overlevel - Low vulnerable</div>
-          <div id="lowrisk-body" ></div>
+        <div class="info-subsect">
+          <div class="info-menu">Overlevel - Low vulnerable</div>
         </div>
-        <div id="overlvl-section">
-          <div id="overlvl-menu" >Overleveled</div>
-          <div id="overlvl-body" ></div>
+        <div class="info-subsect">
+          <div class="info-menu">Overleveled</div>
         </div>
-        <div id="minisec-section">
-          <div id="minisec-menu" ></div>
-          <div id="minisec-body" ></div>
+        <div class="info-subsect">
         </div>
       </div>
     </div>
@@ -70,6 +86,6 @@
   </div>
   <script src="{{ url_for('static', filename='w3gdefs.js') }}"></script>
   <script src="{{ url_for('static', filename='w3gretrieve.js') }}"></script>
-  <script src="{{ url_for('static', filename='w3gasynctest.js') }}"></script>
+  <script src="{{ url_for('static', filename='w3gtest.js') }}"></script>
 </body>
 </html>

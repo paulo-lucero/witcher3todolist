@@ -14,6 +14,10 @@ body {
   z-index: 2;
 }
 
+#qdone-data {
+  display: none;
+}
+
 #qnotes-overlay {
   width: 75vw;
   height: 75vh;
@@ -31,19 +35,62 @@ body {
 }
 
 #quest-query {
+  position: relative;
   margin-bottom: .3vw;
 }
 
-#quest-query input[type="text"] {
+#quest-query input {
   width: 20vw;
   border: 3px solid black;
   border-radius: 5px;
 }
 
-#quest-query input[type="number"] {
-  width: 5vw;
+#level-query {
+  width: 10vw;
+  position: relative;
+}
+
+#level-query input {
+  width: 100px;
   border: 3px solid black;
   border-radius: 5px;
+}
+
+#input-arrowup {
+  position: absolute;
+  left: 112px;
+  top: 0px;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 8px solid #181818;
+}
+
+#input-arrowdown {
+  position: absolute;
+  left: 112px;
+  bottom: 0px;
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-top: 8px solid #181818;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+
+#input-arrowup:hover,
+#input-arrowdown:hover {
+  cursor: pointer;
+}
+
+#input-arrowup:hover {
+  border-bottom-color: yellow;
+}
+
+#input-arrowdown:hover {
+  border-top-color: yellow;
 }
 
 #page-section {
@@ -95,39 +142,52 @@ body {
   margin-bottom: .3vw;
 }
 
-#scavenger-section,
-#highrisk-section,
-#lowrisk-section,
-#overlvl-section,
-#minisec-section {
+.info-subsect, .info-body {
   display: none;
 }
 
-.quest-data, .affitem-name {
+.quest-data,
+.headers-questname {
   display: inline-block;
   width: 35%;
   word-wrap: break-word;
 }
 
-.quest-level, .affitem-lvl {
+.quest-level,
+.headers-questlvl,
+.qlvl-none {
   display: inline-block;
   width: 10%;
 }
 
-.notes-data span {
+.notes-data span span {
   border-right-style: solid;
 }
 
-.notes-data span:last-child {
+.notes-data span span:last-child {
   border-right-style: none;
 }
 
-.notes-data {
+.multi-notes {
+  display: none;
+}
+
+.notes-data,
+.headers-affected,
+.headers-notes,
+.headers-regquest,
+.qnotes-none {
   display: inline-block;
   width: 17%;
 }
 
-.notes-data:hover {
+.qlvl-none,
+.qnotes-none {
+  font-size: small;
+  font-style: italic;
+}
+
+.notes-data span:hover {
   font-weight: bold;
   cursor: pointer;
 }
@@ -135,13 +195,88 @@ body {
 .normal-quest,
 .normal-quest a:link,
 .normal-quest a:visited {
-  color: #483D8B;
+  color: rgba(72, 61, 139);
 }
 
 .cutoff-quest,
 .cutoff-quest a:link,
 .cutoff-quest a:visited {
-  color: red;
+  color: rgba(255, 0, 0);
+}
+
+.normal-quest.qlvl-none,
+.normal-quest.qnotes-none {
+  color: rgba(72, 61, 139, 0.5);
+}
+
+.cutoff-quest.qlvl-none,
+.cutoff-quest.qnotes-none {
+  color: rgba(255, 0, 0, 0.5);
+}
+
+body.in-query * {
+  cursor: wait !important;
+}
+
+#quest-query .select-mode {
+  position: absolute;
+  right: 19vw;
+  display: inline-block;
+  width: 7vw;
+}
+
+#quest-query .cancel-mode {
+  position: absolute;
+  right: 11vw;
+  display: none;
+  width: 7vw;
+}
+
+#done-display {
+  position: absolute;
+  right: 0px;
+  display: inline-block;
+  width: 10vw;
+}
+
+#done-display:hover,
+.select-mode:hover,
+.cancel-mode:hover {
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.quest-marker {
+  visibility: hidden;
+}
+
+#w3g-body.select-on .quest-marker,
+#done-data-cont.select-on .quest-marker {
+  visibility: revert !important;
+}
+
+#done-data-cont {
+  width: 70vw;
+  height: 65vh;
+  overflow: auto;
+}
+
+#qdone-bttns {
+  position: relative;
+}
+
+#qdone-bttns .select-mode {
+  position: absolute;
+  right: 7vw;
+  display: inline-block;
+  width: 7vw;
+}
+
+#qdone-bttns .cancel-mode {
+  position: absolute;
+  right: 0px;
+  display: none;
+  width: 7vw;
 }
 
 /* .cutoff-quest span, .cutoff-quest span a:link, .cutoff-quest span a:visited {

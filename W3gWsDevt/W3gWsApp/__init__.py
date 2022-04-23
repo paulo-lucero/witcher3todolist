@@ -2,7 +2,7 @@ from flask import Flask, render_template, url_for
 import os
 
 # NOTES:
-# It’s preferable to create your extensions and app factories so that the extension object does not initially get bound to the application.
+# Its preferable to create your extensions and app factories so that the extension object does not initially get bound to the application.
 # So no application-specific state is stored on the extension object, so one extension object can be used for multiple apps.
 # https://flask.palletsprojects.com/en/2.0.x/patterns/appfactories/#factories-extensions
 # https://flask.palletsprojects.com/en/2.0.x/extensiondev/
