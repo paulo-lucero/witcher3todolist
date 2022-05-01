@@ -348,6 +348,7 @@ async function questMarking(evt) {
       markData.selectRefrh();
     } else {
       qrId.push(Date.now());
+      // IMPORTANT: the quest container selected attribute should be true, otherwise the ContainersManager.getMarked() will not able to get it
       let resultData = await queryInfo('/query/request-modif', new modifData(qrId));
       if (resultData.modified) {
         removeData(dataConts);

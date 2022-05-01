@@ -21,19 +21,6 @@ def main_quests_info():
     cur_db = conn_db.cursor()
     cur_db.execute(w3gdbhandl.gen_query_cmd(where=['all_quests.category_id = 1'], af_wh=['ORDER BY all_quests.id ASC']))
 
-    # old - using quest_consoData() : response time -> 6-7 ms
-    # new - using CASE : response time -> 10-13 ms
-    # new approach could be improve by query planning/optimizing
-    #  using indices
-    #  missable, affected quests & enemies count can be "pre-made"
-    #   affected quests count can be updated everying marking done of quests
-    #   include cutoff_id of affected quests in request body data and use it for querying/update, it fast since it is the primary key which is an indexed
-    #   separate executemany method for updating affected count, use "update columns with arithmetical expression"
-    #    if wishes to save the row_count of "done quests", execute it before executing executemany statement of "affected count" update
-    #  create count field/colum and use this as query, that gets updated using TRIGGER when UPDATE/INSERT/etc
-    # old approach problem is it doing full table scan, even though
-    #  only once per connection, it might prove expensive if it is
-    #  a large data, it could be more beneficial if there is low small of data
     return jsonify(cur_db.fetchall())
 
 @query_bp.route('/regions-info')

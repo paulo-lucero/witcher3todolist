@@ -370,7 +370,7 @@ function undsplyEle(bodyConts, preBool=null) {
     let isDplyNone = stylng(bodyCont, 'display') === 'none';
     let isHasNotes = preBool !== null ? preBool : bodyCont.hasChildNodes();
     if (isDplyNone && isHasNotes) {
-      stylng(bodyCont, 'display', 'unset');
+      stylng(bodyCont, 'display', 'revert');
     } else if (!isDplyNone && !isHasNotes) { //if "else" is use, the bodyCont will be none if the condition = isDplyNone is False while isHasNotes is True
       stylng(bodyCont, 'display', 'none');
       //possible results - false:
@@ -449,6 +449,162 @@ function uniqueQRid(qrIds) {
 //let te = [[1, 2], [3, 4], [4, 5] ,[1, 2], [6, 7]];
 //console.log(testUnique(te));
 
+function parseData(forParse, ...notInc) {
+  let uniqueData = new Map();
+  let configParse = {
+    info: ['questId', 'regionId', 'level'],
+    cont: null
+  };
+  function parseVal(strng) {
+    let resultPars = parseInt(strng, 10);
+    return !isNaN(resultPars) ? resultPars : strng === 'null' ? null : strng;
+  }
+  function byConfig(rawData, basisParse) {
+    let spltd = rawData.split('#');
+    if (spltd.length !== basisParse.length) {
+      throw new Error('unequal amount of parsable data values');
+    }
+    let parsedInfo = {};
+    for (let idx = 0; idx < basisParse.length; idx++) {
+      let infoVal = parseVal(spltd[idx]);
+      if (notInc.length > 0) {
+        if(!notInc.includes(basisParse[idx])) parsedInfo[basisParse[idx]] = infoVal;
+      } else {
+        parsedInfo[basisParse[idx]] = infoVal;
+      }
+    }
+    return parsedInfo;
+  }
+  function bySelf(rawData) {
+    if (rawData.indexOf(':') === -1) {
+      throw new Error(`Unable to parse, due to no value can be assigned as key or value on : ${rawData}`);
+    }
+    let parsedInfo = {};
+    for (let rawD of rawData.split('-')) {
+      let spltd = rawD.split(':');
+      if (spltd.length > 2) {
+        throw new Error(`Too many data to determine which is value : ${spltd}`);
+      }
+      let infoVal = parseVal(spltd[1]);
+      parsedInfo[spltd[0]] = infoVal;
+    }
+    return parsedInfo;
+  }
+  function getUnique(rawInfo) {
+    if (rawInfo.nodeType !== Node.ELEMENT_NODE) {
+      throw new Error('Not an element');
+    }
+    let dataKeys = Object.keys(rawInfo.dataset);
+    if (dataKeys.length === 0) {
+      throw new Error('no data key/s found to parse');
+    }
+    let foundKeys = dataKeys.filter(dataKey => dataKey in configParse);
+    if (foundKeys.length === 0) {
+      throw new Error('element data doesn\'t contain something that can be parsed');
+    }
+    if (foundKeys.length > 1) {
+      throw new Error(`Found multiple matched data key to parse: ${foundKeys}`);
+    }
+    let basisKey = foundKeys[0];
+    uniqueData.set(rawInfo.dataset[basisKey], configParse[basisKey]);
+  }
+  if ('length' in forParse && forParse.length > 0) {
+    for (let rawInfo of forParse) {
+      getUnique(rawInfo);
+    }
+  } else {
+    getUnique(forParse);
+  }
+  let procd = [];
+  for (let [rawData, basisParse] of uniqueData.entries()) {
+    procd.push(basisParse ? byConfig(rawData, basisParse) : bySelf(rawData));
+  }
+  return procd;
+}
+
+function GenFetchInit(qrData, filData=null, getInfo=false, note=null) {
+  this.method = 'PATCH';
+  this.headers = {
+    'Content-Type': 'application/json'
+  };
+  this.body = JSON.stringify(
+    {
+      questData: qrData,
+      filter: filData,
+      done: !(getInfo || note) ? markData.doneMode : null,
+      redo: !(getInfo || note) ? !markData.doneMode : null,
+      query: getInfo ? getInfo : false,
+      note: note
+    }
+  );
+}
+
+async function updateContainers() {
+  let uniqFil = new Map();
+  function setHasFil(filType, contData) {
+    let filsBasis = uniqFil.get(filType);
+    for (let type of Object.keys(filsBasis)) {
+      let val = filsBasis[type];
+      if (!Array.isArray(val)) {
+        if (val === contData[type]) continue;
+        let arVal = [val];
+        arVal.push(contData[type]);
+        filsBasis[type] = arVal;
+      } else {
+        if (val.includes(contData[type])) continue;
+        val.push(contData[type]);
+      }
+    }
+  }
+  function consoFilter(contsData) {
+    for (let contData of contsData) {
+      let filType = Object.keys(contData).join('-');
+      if (uniqFil.has(filType)) {
+        setHasFil(filType, contData);
+      } else {
+        uniqFil.set(filType, contData);
+      }
+    }
+    return Array.from(uniqFil.values());
+  }
+
+  let allConts = document.querySelectorAll('[data-cont]');
+  let allcountrs = document.querySelectorAll('[data-countr]');
+  let markedData = document.querySelectorAll('[data-selected=\"true\"]');
+  if (markedData.length === 0) {
+    return false;
+  }
+  let qrIds = parseData(markedData, 'level');
+  if (markedData.doneMode) {
+    let doneDate = Date.now();
+    qrIds.forEach(qr => qr.doneDate = doneDate);
+  }
+  let filtersBasis = null;
+  if (allConts.length !== 0 && !markData.doneMode) {
+    filtersBasis = consoFilter(parseData(allConts));
+  }
+  let resultData = await queryInfo('/query/request-modif', new GenFetchInit(qrIds, filtersBasis));
+  if (resultData.modified === qrIds.length) {
+    for (let markedCont of markedData) {
+      markedCont.remove();
+    }
+    if (allConts.length !== 0 && !markData.doneMode) {
+      let evntMark = new CustomEvent('updatecont', {detail:resultData.result});
+      let sendEvt = qCont => qCont.dispatchEvent(evntMark);
+      allConts.forEach(sendEvt);
+    }
+    if (allcountrs.length !== 0) {
+      let evntMark = new CustomEvent('updatecountr', {detail:resultData.count});
+      let sendEvt = qCont => qCont.dispatchEvent(evntMark);
+      allcountrs.forEach(sendEvt);
+    }
+  } else {
+    console.log(qrIds);
+    throw new Error(`Unexpected number of changes made : modified count ${resultData.modified} | marked data count ${qrIds.length}`);
+  }
+  return true;
+}
+
 for (let infoSub of infoSect.infoSubs) {
   for (let order = 1; order <= Object.keys(infoSect.cateIndx).length; order++) {
     let infoIsFirst = infoQuestBody.firstElementChild === infoSub;
@@ -474,9 +630,9 @@ for (let infoSub of infoSect.infoSubs) {
   infoSect.cateIndx = newCateIndx;
 }
 infoSect.infoSubs.forEach(infoSub => infoSect.cateConts.push(Array.from(infoSub.getElementsByClassName(infoSect.cateCls))));
-infoSect.infoRefresh = function(rmvData=false) {
+infoSect.infoRefresh = function(rmvData=false, isCrucial=true) {
   let isNote = false;
-  let rmvFunc = cateCont => removeData(cateCont);
+  let rmvFunc = cateCont => removeData(cateCont); //use new closeNotes func, if isCrucial is true delete data-cont of infoRegion, if false delete data-cont of crucial conts
   let chkChFunc = cateBody => cateBody.hasChildNodes();
   let refrhNote = cateBody => undsplyEle([cateBody.parentElement], cateBody.hasChildNodes());
   if (rmvData) {
@@ -488,6 +644,8 @@ infoSect.infoRefresh = function(rmvData=false) {
     undsplyEle([infoSect.infoSubs[idx]], subNoteBool);
     isNote = subNoteBool ? subNoteBool : isNote; // once true, the value wont change even if all next is false
   }
+
+  //use openCont func, if isCrucial is true open all crucial conts only not including infoRegion, if false open only infoRegion
   return isNote;
 };
 // if (infoSect.cateConts.length === 5) console.log(`Info Bodies Creation Elapsed Time ${Date.now()-sTime}`);
