@@ -123,6 +123,10 @@ def quest_done():
     cur_db = conn_db.cursor()
     json_data = request.get_json(cache=False) #dont know why form attribute wont work
     quest_data = json_data['questData'] #format : [{'regionId': int, 'questId': int}, ...]
+    fils_basis = json_data['filter']
+    quest_aff = None
+    count_summ = None
+    modif_count = 0
 
     if json_data['done'] or json_data['redo']:
         if quest_data != None:
@@ -137,25 +141,49 @@ def quest_done():
                 tuple(quest_data)
             )
         elif json_data['redo']:
+            cur_db.execute('SELECT quest_region.quest_id AS questId FROM quest_region WHERE quest_region.status_id = 2')
+            quest_data = cur_db.fetchall()
             cur_db.execute(w3gdbhandl.gen_query_cmd(modif='redo-all'))
+        modif_count = cur_db.rowcount
+
+        quest_ids = str(tuple(set([qr_id['questId'] for qr_id in quest_data])))
+        if fils_basis:
+            cur_db.execute(
+                w3gdbhandl.gen_query_cmd(
+                    'mregion',
+                    select=['all_quests.cutoff', 'all_quests.category_id', 'CASE all_quests.region_id WHEN 1 THEN 1 ELSE 0 END AS ismulti'],
+                    where=w3gdbhandl.gen_filter(quest_ids, fils_basis)
+                )
+            )
+            result_query = cur_db.fetchall()
+            if len(result_query) > 0:
+                quest_aff = result_query
+        cur_db.execute('''SELECT 'REGION' AS count_type, region.id AS count_id, region.side_count AS count_num
+                          FROM region WHERE region.id != 1 UNION ALL
+                          SELECT 'CUTOFF', all_quests.id, all_quests.aff_count FROM all_quests
+                          WHERE all_quests.id IN (SELECT alq.cutoff FROM all_quests AS alq WHERE alq.id IN ?)''', (quest_ids, ))
+        result_query = cur_db.fetchall()
+        if len(result_query) > 0:
+            count_summ = result_query
+
     elif json_data['query']:
         query_info = json_data['query']
         addlt_wh = f" AND {query_info['recent']} - quest_region.date_change <= 86400000" if 'recent' in query_info else ''
-        cur_db.execute(w3gdbhandl.gen_query_cmd(
-            'mregion',
-            select=['quest_region.date_change'],
-            where='quest_region.status_id = 2' + addlt_wh,
-            af_wh=['ORDER BY quest_region.region_id ASC, quest_region.date_change DESC']
-            ))
+        cur_db.execute(
+            w3gdbhandl.gen_query_cmd(
+                'mregion',
+                select=['quest_region.date_change'],
+                where='quest_region.status_id = 2' + addlt_wh,
+                af_wh=['ORDER BY quest_region.region_id ASC, quest_region.date_change DESC']
+            )
+        )
         return jsonify(cur_db.fetchall())
+
     elif json_data['note']:
+        modif_count = cur_db.rowcount
         pass #for quest notes adding or modification
 
-    modif_count = cur_db.rowcount
     if modif_count > 0:
-        mod_status = True
         conn_db.commit()
-    else:
-        mod_status = False
 
-    return jsonify(quest_data=quest_data, modified=mod_status, row_count=modif_count)
+    return jsonify(result=quest_aff, count=count_summ, modified=modif_count)

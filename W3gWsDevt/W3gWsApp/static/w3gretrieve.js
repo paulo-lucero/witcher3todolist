@@ -1,20 +1,19 @@
 async function displayAffected(evt) {
-  if (allowEvt()) {
-    let sect = evt.currentTarget.parentElement.parentElement;
-    let noteContCls = 'affected-note';
-    let sameNote = closeNotes(sect.querySelector('ul'), sect.getElementsByClassName(noteContCls)[0]);
-    if (!sameNote) {
-      let dataNotes = await queryInfo(`/query/aff-id-${this}`);
-      let noteUl = document.createElement('ul');
-      noteUl.className = noteContCls;
-      noteUl.appendChild(genNoteHeader(document.createElement('li'), 'span', 4)); // header
-      for (let dataNote of dataNotes) {
-        noteli = document.createElement('li');
-        noteUl.appendChild(displayQueryData(dataNote, noteli, 5));
-      }
-      sect.appendChild(noteUl);
-    }
+  if (!allowEvt()) return;
+  let sect = evt.currentTarget.parentElement.parentElement;
+  let noteContCls = 'affected-note';
+  let curNote = sect.querySelector('ul');
+  let wasClosed = contsM.closeCont(curNote);
+  if (!wasClosed) return;
+  let dataNotes = await queryInfo(`/query/aff-id-${this.valueOf()}`);
+  if (!dataNotes) return;
+  let noteUl = contsM.openCont('ul', false, {cutoff:this.valueOf()}, null, noteContCls);
+  noteUl.appendChild(genNoteHeader(document.createElement('li'), 'span', 4)); // header
+  for (let dataNote of dataNotes) {
+    noteli = document.createElement('li');
+    noteUl.appendChild(genQueryData(dataNote, noteli, 5));
   }
+  sect.appendChild(noteUl);
 }
 
 async function displayNote(evt) {
@@ -82,7 +81,7 @@ function closeNotesOverlay(evt) {//closing overlay notes menu
   }
 }
 
-function displayQueryData(consoInfos, sect, cutCol=null, isInclReg=null, custmCls=null) {
+function genQueryData(consoInfos, sect, cutCol=null, isInclReg=null, custmCls=null) {
   let dataFuncs = [displayAffected, showNotesOverlay, questMarking, showMultiQuest, showDataConfirm];
   let questInfos = new finalData(consoInfos, isInclReg, Array.isArray(custmCls) ? custmCls : null, ...dataFuncs);
   let finalproct = typeof cutCol === 'number' ? questInfos.procdData.slice(0, cutCol) : questInfos.procdData;
@@ -107,8 +106,7 @@ function displayQueryData(consoInfos, sect, cutCol=null, isInclReg=null, custmCl
   if (questInfos.multiBool) {
     sect.appendChild(extdCreateEle('div', null, 'multi-notes'));
   } else {
-    sect.dataset.qstky = questInfos.questId;
-    sect.dataset.regky = questInfos.regionId;
+    sect.dataset.info = questInfos.qInfo;
     sect.addEventListener('mouseenter', inputVisibility);
     sect.addEventListener('mouseleave', inputVisibility);
   }
@@ -123,8 +121,9 @@ async function showDataConfirm(evt) {
       if (infoSect.regionId !== this.regionId) {
         throw `Not same region id: info obj - ${infoSect.regionId} | region id - ${this.regionId}`;
       }
+      let chckHasQuest = cateBody => hasQuests(cateBody);
       for (let indx = 0; indx < infoSect.infoMenus.length - 1; indx++) {
-        let openedNote = infoSect.cateConts[indx].some(cateBody => cateBody.hasChildNodes());
+        let openedNote = infoSect.cateConts[indx].some(chckHasQuest);
         if (openedNote) {
           infoSect.opnCrl.appendChild(extdCreateEle('div', infoSect.infoMenus[indx].innerHTML));
         }
@@ -148,7 +147,7 @@ async function showDataConfirm(evt) {
         } else {
           infoSect.infoRegion.appendChild(genNoteHeader(document.createElement('div'), 'span', 4));
           for (let questInfo of questInfos) {
-            infoSect.infoRegion.appendChild(displayQueryData(questInfo, document.createElement('div'), 5));
+            infoSect.infoRegion.appendChild(genQueryData(questInfo, document.createElement('div'), 5));
           }
         }
         infoSect.infoRefresh();
@@ -158,114 +157,74 @@ async function showDataConfirm(evt) {
   }
 }
 
-async function retreiveQuestData(evt) {
-  if (allowEvt()) {
-    let qNoteClass = this.qBodyClass;
-    let checkSameNote = this.checkSameNote;
-    let dataContainer = this.dataContainer;
-    let sameNote = closeNotes([dataContainer], checkSameNote ? document.querySelector(`.${qNoteClass}`) : dataContainer.hasChildNodes(),
-                              menuContainer = checkSameNote ? (dataContainer.hasChildNodes() ? pageQuestMenu : null) : null);
-
-    if (!sameNote) {
-      let questInfos = await queryInfo(this.urlQuery);
-      dataContainer.className = qNoteClass;
-      if (questInfos === null) {
-        infoSect.infoRegion.appendChild(retreiveNull());
-      } else {
-        dataContainer.appendChild(genNoteHeader(document.createElement('div'), 'span', typeof this.colCut === 'number' ? this.colCut - 1 : null));
-        for (let questInfo of questInfos) {
-          dataContainer.appendChild(displayQueryData(questInfo, document.createElement('div'), this.colCut, this.isInclReg));
-        }
-      }
-    }
+function displayQuestData(infoCont, infosData, eleType, ...par) {
+  // if infoCont is a function, infoData will be passed to it and it should return an element where the infoData will be appended
+  for (let infoData of infosData) {
+    infoCont = typeof infoCont === 'function' ? infoCont(infoData) : infoCont;
+    let questCont = document.createElement(eleType);
+    infoCont.appendChild(genQueryData(infoData, questCont, ...par));
   }
 }
 
-async function retreiveRegionData(evt) {
-  if (allowEvt()) {
-    let qNoteClass = this.qBodyClass;
-    let sameNote = closeNotes([pageQuestBody], document.querySelector(`.${qNoteClass}`),
-                              menuContainer = pageQuestBody.hasChildNodes() ? pageQuestMenu : null);
-    if(!sameNote) {
-      let regionInfos = await queryInfo(this.urlQuery);
-      pageQuestBody.className = qNoteClass;
-      for (let regionInfo of regionInfos) {
-        let rBodyCls = 'region-body';
-        let regionMenu = extdCreateEle('div', [
-          extdCreateEle('span', regionInfo.region_name, eleCls='region-name'),
-          extdCreateEle('span', regionInfo.quest_count, eleCls='quest-count')
-        ], eleCls='region-menu');
-        let regionBody = extdCreateEle('div', null, eleCls=rBodyCls);
-        if (regionInfo.quest_count) {
-          regionMenu.addEventListener('click', retreiveQuestData.bind({
-            qBodyClass: rBodyCls,
-            checkSameNote: false,
-            dataContainer: regionBody,
-            urlQuery: `/query/second-quests-regid-${regionInfo.id}`,
-            colCut: 5,
-            isInclReg: false
-          }));
-        }
-        let regionSect = extdCreateEle('div', [regionMenu, regionBody], eleCls='region-sect');
-        pageQuestBody.appendChild(regionSect);
-      }
-    }
+async function displayRegionSect(evt) {
+  if (!allowEvt()) return;
+  let regionBody = evt.currentTarget.parentElement.querySelector('.region-body');
+  let regionId = parseInt(regionBody.dataset.region, 10);
+  let wasClosed = contsM.closeCont(regionBody, true);
+  if (!wasClosed) return;
+  let questInfos = await queryInfo(`/query/second-quests-regid-${regionId}`);
+  contsM.openCont(regionBody, true, {region:regionId, second:null});
+  if (questInfos === null) {
+    regionBody.appendChild(retreiveNull());
+    return;
   }
+  regionBody.appendChild(genNoteHeader(document.createElement('div'), 'span', 4));
+  displayQuestData(regionBody, questInfos, 'div', 5);
 }
 
-async function checkQuestsStatus() {
-  if (allowEvt()) {
-    let menusData = [
-      [
-        'main_count',
-        'Main Quests',
-        'qmain-menu',
-        retreiveQuestData,
-        {
-          urlQuery: '/query/main-quests-info',
-          qBodyClass: 'qmain-body',
-          dataContainer: pageQuestBody,
-          checkSameNote: true,
-          colCut: null,
-          isInclReg: true
-        }
-      ],
-      [
-        'second_count',
-        'Second Quests',
-        'qsec-menu',
-        retreiveRegionData,
-        {
-          urlQuery: '/query/regions-info',
-          qBodyClass: 'qsec-body',
-        }
-      ]
-    ];
-    let questsStatus = await queryInfo('/query/check-quests-info');
-    if(!questsStatus) {
+async function questSectMenu(evt) {
+  if (!allowEvt()) return;
+  let sectMenu = evt.currentTarget;
+  let isMain = sectMenu.className === 'qmain-menu';
+  let sameNote = contsM.closeCont(pageQuestBody, true, isMain ? {className:'qmain-body'} : {className:'qsec-body'});
+  if (sameNote) return;
+  if (isMain) {
+    let questInfos = await queryInfo('/query/main-quests-info');
+    contsM.openCont(pageQuestBody, true, {main:null});
+    pageQuestBody.className = 'qmain-body';
+    if (questInfos === null) {
       pageQuestBody.appendChild(retreiveNull());
       return;
     }
-    for (let [questCat, qMenuName, qMenuClass,menuFunc, bindData] of menusData) {
-      if (questsStatus[questCat]) {
-        let menuEle = extdCreateEle('span', qMenuName, eleCls=qMenuClass);
-        menuEle.addEventListener('click', menuFunc.bind(bindData));
-        pageQuestMenu.appendChild(menuEle);
-      }
+    pageQuestBody.appendChild(genNoteHeader(document.createElement('div'), 'span'));
+    displayQuestData(pageQuestBody, questInfos, 'div', null, true);
+  } else {
+    let regionInfos = await queryInfo('/query/regions-info');
+    pageQuestBody.className = 'qsec-body';
+    for (let regionInfo of regionInfos) {
+      let regionMenu = extdCreateEle('div', [
+        extdCreateEle('span', regionInfo.region_name, eleCls='region-name'),
+        extdCreateEle('span', regionInfo.quest_count, eleCls='quest-count')
+      ], eleCls='region-menu');
+      let regionBody = extdCreateEle('div', null, eleCls='region-body');
+      regionBody.dataset.region = regionInfo.id;
+      regionMenu.addEventListener('click', displayRegionSect);
+      let regionSect = extdCreateEle('div', [regionMenu, regionBody], eleCls='region-sect');
+      pageQuestBody.appendChild(regionSect);
     }
-    pageQuestMenu.firstChild.click();
   }
 }
 
 async function retreiveCrucialData(queryLevel) {
   function infoHeader(cateBody) {
-    if (cateBody.hasChildNodes()) {
-      cateBody.insertBefore(genNoteHeader(document.createElement('div'), 'span', 4), cateBody.firstElementChild);
+    if (hasQuests(cateBody)) {
+      cateBody.insertBefore(genNoteHeader(document.createElement('div'), 'span', 4), firstChildQuest(cateBody));
     }
   }
   if (allowEvt()) {
     let qCrucialInfos = await queryInfo(`/query/crucial-quests-qrylvl-${queryLevel}`);
     infoSect.infoRefresh(true);
+    infoSect.recentLvl = queryLevel;
     if (qCrucialInfos) {
       let hRiskBasis = queryLevel - 5;
       let lRiskBasis = queryLevel - 2;
@@ -279,7 +238,7 @@ async function retreiveCrucialData(queryLevel) {
                      : questLevel < hRiskBasis ? 3
                      : null;
         if (typeData !== null) {
-          infoSect.cateConts[typeData][cateIndx].appendChild(displayQueryData(qCrucialInfo, document.createElement('div'), 5));
+          infoSect.cateConts[typeData][cateIndx].appendChild(genQueryData(qCrucialInfo, document.createElement('div'), 5));
         }
       }
     }
@@ -294,22 +253,25 @@ async function retreiveCrucialData(queryLevel) {
 }
 
 async function showMultiQuest(evt) {
-  if (allowEvt()) {
-    let questDataCont = evt.currentTarget.parentElement;
-    let multiDataCont = questDataCont.querySelector('.multi-notes');
-    sameNote = closeNotes([multiDataCont], multiDataCont.hasChildNodes());
-    if (!sameNote) {
-      let multiInfos = await queryInfo(`/query/qst-id-${this}`);
-      for (let multiInfo of multiInfos) {
-        let innerCont = document.createElement('div');
-        let questLoc = extdCreateEle('span', `${multiInfo.location} :`, eleCls='multi-rname');
-        multiDataCont.appendChild(displayQueryData(multiInfo, innerCont, 2));
-        // console.log(innerCont.children[1]);
-        innerCont.insertBefore(questLoc, innerCont.children[1]);
-      }
+  if (!allowEvt()) return;
+  let questDataCont = evt.currentTarget.parentElement;
+  let multiDataCont = questDataCont.querySelector('.multi-notes');
+  let questId = parseInt(evt.currentTarget.dataset.id, 10);
+  // sameNote = closeNotes([multiDataCont], multiDataCont.hasChildNodes());
+  let wasClosed = contsM.closeCont(multiDataCont, true);
+  if (wasClosed) {
+    let multiInfos = await queryInfo(`/query/qst-id-${questId}`);
+    if (multiInfos.length === 0) return;
+    contsM.openCont(multiDataCont, true, {quest:questId});
+    for (let multiInfo of multiInfos) {
+      let innerCont = document.createElement('div');
+      let questLoc = extdCreateEle('span', `${multiInfo.location} :`, eleCls='multi-rname');
+      multiDataCont.appendChild(genQueryData(multiInfo, innerCont, 2));
+      // console.log(innerCont.children[1]);
+      innerCont.insertBefore(questLoc, innerCont.children[1]);
     }
-    undsplyEle([multiDataCont]);
   }
+  undsplyEle([multiDataCont]);
 }
 
 function inputLvlQuery(evt) {
@@ -348,7 +310,7 @@ async function questMarking(evt) {
       markData.selectRefrh();
     } else {
       qrId.push(Date.now());
-      // IMPORTANT: the quest container selected attribute should be true, otherwise the ContainersManager.getMarked() will not able to get it
+      // IMPORTANT: calling updateContainers is async, need to wait
       let resultData = await queryInfo('/query/request-modif', new modifData(qrId));
       if (resultData.modified) {
         removeData(dataConts);
@@ -376,7 +338,7 @@ async function showQuestsDone(evt) {
           }
         ];
         let currCont = markData.doneDataCont;
-        let isEmpty = !currCont.firstElementChild;
+        let isEmpty = !hasQuests(currCont);
         let queryData = {};
         for (let bttnData of bttnsData) {
           if (evt.target === bttnData.bttn && (isEmpty || currCont.dataset.mode !== bttnData.mode)) {
@@ -393,7 +355,7 @@ async function showQuestsDone(evt) {
                 currReg = extdCreateEle('div', doneQuest.region_name, null, null, {'data-regid': doneQuest.region_id});
                 currCont.appendChild(currReg);
               }
-              currReg.appendChild(displayQueryData(doneQuest, document.createElement('div'), 2));
+              currReg.appendChild(genQueryData(doneQuest, document.createElement('div'), 2));
             }
             currCont.dataset.mode = bttnData.mode;
             break;
@@ -407,6 +369,7 @@ async function redoAllQuest(evt) {
   if (allowEvt()) {
     let resultData = await queryInfo('/query/request-modif', new modifData(null));
     if (resultData.modified) {
+      // can set all doned quests as selected=true, so it can be delete on container update
     }
     console.log(resultData.row_count);
   }
@@ -434,6 +397,7 @@ async function selectMode(evt) {
     };
     selectData.selBttn.innerHTML = markData.selectOn ? 'Select Quest' : selectData.markMsg;
     if (markData.selectOn) {
+      // IMPORTANT: calling updateContainers is async, need to wait
       let dataConts = Array.from(selectData.dataSect.querySelectorAll('[data-selected=\"true\"]'));
       //add instruction for disable "mark as done" if there is no selected
       if (evt.target !== selectData.canBttn && markData.selectRefrh()) {
@@ -489,7 +453,37 @@ document.getElementById('undone-all').addEventListener('click', redoAllQuest);
 markData.recentBttn.addEventListener('click', showQuestsDone);
 markData.allBttn.addEventListener('click', showQuestsDone);
 
-checkQuestsStatus();
+async function initGuide() {
+  let menusData = [
+    [
+      'main_count',
+      'Main Quests',
+      'qmain-menu',
+    ],
+    [
+      'second_count',
+      'Second Quests',
+      'qsec-menu',
+    ]
+  ];
+  let questsStatus = await queryInfo('/query/check-quests-info');
+  if(!questsStatus) {
+    pageQuestBody.appendChild(retreiveNull());
+    return;
+  }
+  for (let [questCat, qMenuName, qMenuClass] of menusData) {
+    if (questsStatus[questCat]) {
+      let menuEle = extdCreateEle('span', qMenuName, eleCls=qMenuClass);
+      menuEle.addEventListener('click', questSectMenu);
+      pageQuestMenu.appendChild(menuEle);
+    }
+  }
+  await questSectMenu({currentTarget:pageQuestMenu.firstChild});
+  contsM.openCont(infoQuestBody, true, {level:infoSect.recentLvl});
+  retreiveCrucialData(infoSect.recentLvl);
+}
+
+initGuide();
 
 // TODO:
 //  -!!

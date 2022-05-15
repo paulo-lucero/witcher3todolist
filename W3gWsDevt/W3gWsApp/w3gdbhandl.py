@@ -174,3 +174,35 @@ def gen_query_cmd(styl='all', **comb):
             sql_cmd += gen_cmd(cur_sect, styls_cmd[styl])
 
     return re.sub('\s{2,}', ' ', sql_cmd.replace('\n', ' '))
+
+def gen_filter(qr_ids, fils):
+    val_def = {
+        'main': 'all_quests.category_id = 1',
+        'second': 'all_quests.category_id != 1',
+        'category': 'all_quests.category_id =?',
+        'region': 'quest_region.region_id =?',
+        'level': 'all_quests.req_level <=?',
+        'cutoff': 'all_quests.cutoff =?',
+        'quest': 'quest_region.quest_id =?'
+    }
+    whr = f"quest_region.quest_id IN {qr_ids} AND (?)"
+    fils_whr = []
+    septr = ' AND '
+
+    for fil in fils:
+        fil_whr = []
+        for fil_t, fil_v in fil.items():
+            fil_st = None
+            if isinstance(fil_v, list):
+                fil_st = re.sub('\S+\?', f'IN {str(tuple(fil_v))}', val_def[fil_t])
+            else:
+                fil_st = val_def[fil_t].replace('?', f' {str(fil_v)}')
+            fil_whr.append(fil_st)
+        if len(fil_whr) > 1:
+            fils_whr.append(f'({septr.join(fil_whr)})')
+        elif len(fil_whr) == 1:
+            fils_whr.append(fil_whr[0])
+        else:
+            raise ValueError('no filter type found')
+
+    return whr.replace('?', ' OR '.join(fils_whr))
