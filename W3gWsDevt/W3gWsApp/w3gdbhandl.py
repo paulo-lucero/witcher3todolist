@@ -133,6 +133,7 @@ def gen_query_cmd(styl='all', **comb):
 
         styls_cmd = {
             'all': ['fixed', 'allq', 'reg_name', 'notes'],
+            'mall': ['fixed', 'qrr', 'reg_name', 'notes'],
             'region': ['fixed', 'allq', 'reg_name'],
             'mregion': ['fixed', 'qrr', 'reg_name'],
             'notes': ['fixed', 'allq', 'notes'],
@@ -205,4 +206,4 @@ def gen_filter(qr_ids, fils):
         else:
             raise ValueError('no filter type found')
 
-    return whr.replace('?', ' OR '.join(fils_whr))
+    return whr.replace('(?)' if len(fils_whr) == 1 else '?', ' OR '.join(fils_whr))

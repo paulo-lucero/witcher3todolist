@@ -25,9 +25,6 @@ def main_app():
     from W3gWsApp import w3gtests
     w3g_app.register_blueprint(w3gtests.tests_bp)
 
-    # from W3gWsApp import testMultitear
-    # testMultitear.regapp_testtear(w3g_app)
-
     @w3g_app.route('/')
     def index_page():
         firstPage = render_template('warrior-guide.html')

@@ -7,7 +7,7 @@ async function displayAffected(evt) {
   if (!wasClosed) return;
   let dataNotes = await queryInfo(`/query/aff-id-${this.valueOf()}`);
   if (!dataNotes) return;
-  let noteUl = contsM.openCont('ul', false, {cutoff:this.valueOf()}, null, noteContCls);
+  let noteUl = contsM.openCont('ul', false, {cutoff:this.valueOf()}, null, null, noteContCls);
   noteUl.appendChild(genNoteHeader(document.createElement('li'), 'span', 4)); // header
   for (let dataNote of dataNotes) {
     noteli = document.createElement('li');
@@ -141,7 +141,7 @@ async function showDataConfirm(evt) {
       }
       if (this.confirm) {
         let questInfos = await queryInfo(`/query/second-quests-regid-${infoSect.regionId}`);
-        infoSect.infoRefresh(true);
+        infoSect.infoRefresh(true, false);
         if (questInfos === null) {
           infoSect.infoRegion.appendChild(retreiveNull());
         } else {
@@ -186,7 +186,7 @@ async function questSectMenu(evt) {
   if (!allowEvt()) return;
   let sectMenu = evt.currentTarget;
   let isMain = sectMenu.className === 'qmain-menu';
-  let sameNote = contsM.closeCont(pageQuestBody, true, isMain ? {className:'qmain-body'} : {className:'qsec-body'});
+  let sameNote = contsM.closeCont(pageQuestBody, true, isMain ? {className:'qmain-body'} : !!pageQuestBody.querySelector('.region-menu'));
   if (sameNote) return;
   if (isMain) {
     let questInfos = await queryInfo('/query/main-quests-info');
@@ -223,7 +223,7 @@ async function retreiveCrucialData(queryLevel) {
   }
   if (allowEvt()) {
     let qCrucialInfos = await queryInfo(`/query/crucial-quests-qrylvl-${queryLevel}`);
-    infoSect.infoRefresh(true);
+    infoSect.infoRefresh(true, true);
     infoSect.recentLvl = queryLevel;
     if (qCrucialInfos) {
       let hRiskBasis = queryLevel - 5;
@@ -293,86 +293,75 @@ function inputLvlQuery(evt) {
   }
 }
 
+function questSelection(dataCont) {
+  let isSelected = 'selected' in dataCont.dataset ? JSON.parse(dataCont.dataset.selected) : false;
+  dataCont.dataset.selected = !isSelected;
+  dataCont.querySelector('.quest-marker').checked = !isSelected;
+}
+
 async function questMarking(evt) {
-  if (allowEvt('allow-select')) {
-    let questId = parseInt(evt.currentTarget.parentElement.dataset.qstky);
-    let regionId = parseInt(evt.currentTarget.parentElement.dataset.regky);
-    let qrId = [questId, regionId];
-    let dataConts = Array.from(document.querySelectorAll(`[data-qstky=\"${questId}\"][data-regky=\"${regionId}\"]`));
-    if (markData.selectOn) {
-      dataConts.forEach(
-        function(dataCont) {
-          let isSelected = 'selected' in dataCont.dataset ? JSON.parse(dataCont.dataset.selected) : false;
-          dataCont.dataset.selected = !isSelected;
-          dataCont.querySelector('.quest-marker').checked = !isSelected;
-        }
-      );
-      markData.selectRefrh();
-    } else {
-      qrId.push(Date.now());
-      // IMPORTANT: calling updateContainers is async, need to wait
-      let resultData = await queryInfo('/query/request-modif', new modifData(qrId));
-      if (resultData.modified) {
-        removeData(dataConts);
-        undsplyEle(dataConts);
-      }
-    }
+  if (!allowEvt('allow-select')) return;
+  let selectedQuest = evt.currentTarget.parentElement;
+  let dataConts = Array.from(document.querySelectorAll(`[data-info=\"${selectedQuest.dataset.info}\"]`));
+  dataConts.forEach(questSelection);
+  if (markData.selectOn) {
+    markData.selectRefrh();
+    return;
   }
+  await contsM.update();
 }
 
 async function showQuestsDone(evt) {
-  if (allowEvt()) {
-    if (evt.target === document.getElementById('done-display')) {
-      markData.showDone(true);
-      noteConts.overlayOn(true);
-      document.getElementById('done-menu').firstElementChild.click();
-    } else {
-        let bttnsData = [
-          {
-            bttn: markData.recentBttn,
-            mode: 'recent'
-          },
-          {
-            bttn: markData.allBttn,
-            mode: 'all'
-          }
-        ];
-        let currCont = markData.doneDataCont;
-        let isEmpty = !hasQuests(currCont);
-        let queryData = {};
-        for (let bttnData of bttnsData) {
-          if (evt.target === bttnData.bttn && (isEmpty || currCont.dataset.mode !== bttnData.mode)) {
-            queryData[bttnData.mode] = Date.now();
-            let doneData = await queryInfo('/query/request-modif', new modifData(null, queryData));
-            if(!isEmpty) removeData(currCont);
-            if (!doneData || doneData.length === 0) {
-            currCont.appendChild(retreiveNull());
-            return;
-            }
-            let currReg = null;
-            for (let doneQuest of doneData) {
-              if (!currReg || parseInt(currReg.dataset.regid, '10') !== doneQuest.region_id) {
-                currReg = extdCreateEle('div', doneQuest.region_name, null, null, {'data-regid': doneQuest.region_id});
-                currCont.appendChild(currReg);
-              }
-              currReg.appendChild(genQueryData(doneQuest, document.createElement('div'), 2));
-            }
-            currCont.dataset.mode = bttnData.mode;
-            break;
-          }
+  if (!allowEvt()) return;
+  if (evt.target === document.getElementById('done-display')) {
+    markData.showDone(true);
+    noteConts.overlayOn(true);
+    document.getElementById('done-menu').firstElementChild.click();
+  } else {
+    let bttnsData = [
+      {
+        bttn: markData.recentBttn,
+        mode: 'recent'
+      },
+      {
+        bttn: markData.allBttn,
+        mode: 'all'
+      }
+    ];
+    let currCont = markData.doneDataCont;
+    let regConts = Array.from(currCont.querySelectorAll('[data-regid]'));
+    let notEmpty = regConts.some(regCont => hasQuests(regCont));
+    let queryData = {};
+    for (let bttnData of bttnsData) {
+      if (evt.target !== bttnData.bttn || (currCont.dataset.mode === bttnData.mode && notEmpty)) continue;
+      // if clicked menu and current menu is not same OR (current menu opened AND has quest data)
+      queryData[bttnData.mode] = Date.now();
+      let doneData = await queryInfo('/query/request-modif', new GenFetchInit(null, null, queryData));
+      // console.log(notEmpty);
+      if (notEmpty || (!notEmpty && currCont.hasChildNodes())) removeData(currCont);
+      if (!doneData || doneData.length === 0) {
+        currCont.appendChild(retreiveNull());
+        return;
+      }
+      let currReg = null;
+      for (let doneQuest of doneData) {
+        if (!currReg || parseInt(currReg.dataset.regid, '10') !== doneQuest.region_id) {
+          currReg = extdCreateEle('div', doneQuest.region_name, null, null, {'data-regid': doneQuest.region_id});
+          currCont.appendChild(currReg);
         }
+        currReg.appendChild(genQueryData(doneQuest, document.createElement('div'), 2));
+      }
+      currCont.dataset.mode = bttnData.mode;
+      break;
     }
   }
 }
 
 async function redoAllQuest(evt) {
-  if (allowEvt()) {
-    let resultData = await queryInfo('/query/request-modif', new modifData(null));
-    if (resultData.modified) {
-      // can set all doned quests as selected=true, so it can be delete on container update
-    }
-    console.log(resultData.row_count);
-  }
+  if (!allowEvt()) return;
+  let dataConts = markData.doneDataCont.querySelectorAll('[data-info]');
+  dataConts.forEach(questSelection);
+  await contsM.update(true);
 }
 
 function inputVisibility(evt) {
@@ -388,50 +377,32 @@ function inputVisibility(evt) {
 }
 
 async function selectMode(evt) {
-  if (allowEvt('allow-select')) {
-    let selectData = {
-      selBttn: markData.doneMode ? markData.selectBttn : markData.doneSelect,
-      canBttn: markData.doneMode ? markData.cancelBttn : markData.doneCancel,
-      markMsg: markData.doneMode ? 'Done' : 'Undone',
-      dataSect: markData.doneMode ? noteConts.w3 : markData.doneDataCont
-    };
-    selectData.selBttn.innerHTML = markData.selectOn ? 'Select Quest' : selectData.markMsg;
-    if (markData.selectOn) {
-      // IMPORTANT: calling updateContainers is async, need to wait
-      let dataConts = Array.from(selectData.dataSect.querySelectorAll('[data-selected=\"true\"]'));
-      //add instruction for disable "mark as done" if there is no selected
-      if (evt.target !== selectData.canBttn && markData.selectRefrh()) {
-        let selectedQuest = uniqueQRid(
-          dataConts.map(
-            dataCont => [parseInt(dataCont.dataset.qstky), parseInt(dataCont.dataset.regky)]
-          )
-        );
-        if (markData.doneMode) {
-          let doneDate = Date.now();
-          selectedQuest.forEach(qrData => qrData.push(doneDate));
+  if (!allowEvt('allow-select')) return;
+  let selectData = {
+    selBttn: markData.doneMode ? markData.selectBttn : markData.doneSelect,
+    canBttn: markData.doneMode ? markData.cancelBttn : markData.doneCancel,
+    markMsg: markData.doneMode ? 'Done' : 'Undone',
+    dataSect: markData.doneMode ? noteConts.w3 : markData.doneDataCont
+  };
+  if (markData.selectOn && evt.target !== selectData.canBttn && markData.selectRefrh()) {
+    await contsM.update();
+  } else if (markData.selectOn && evt.target === selectData.canBttn) {
+    dataConts = document.querySelectorAll('[data-selected=\"true\"]');
+    if (dataConts.length !== 0) {
+      dataConts.forEach(
+        function(dataCont) {
+          dataCont.querySelector('.quest-marker').checked = false;
+          delete dataCont.dataset.selected;
         }
-        let resultData = await queryInfo('/query/request-modif', new modifData(selectedQuest));
-        if (resultData.modified) {
-          removeData(dataConts);
-          undsplyEle(dataConts);
-        }
-      } else if (evt.target === selectData.canBttn) {
-          if (dataConts.length > 0) {
-            dataConts.forEach(
-              function(dataCont) {
-                dataCont.querySelector('.quest-marker').checked = false;
-              }
-            );
-          }
-        }
-      dataConts.forEach(dataCont => delete dataCont.dataset.selected);
+      );
     }
-    markData.selectOn = !markData.selectOn;
-    markData.selectRefrh();
-    selectData.dataSect.classList.toggle('select-on');
-    selectData.canBttn.style.setProperty('display', markData.selectOn ? 'inline-block' : 'none');
-    //when selectOn change to false, all checked input should be unchecked
   }
+  markData.selectOn = !markData.selectOn;
+  selectData.selBttn.innerHTML = markData.selectOn ? selectData.markMsg : 'Select Quest';
+  markData.selectRefrh();
+  selectData.dataSect.classList.toggle('select-on');
+  selectData.canBttn.style.setProperty('display', markData.selectOn ? 'inline-block' : 'none');
+  //when selectOn change to false, all checked input should be unchecked
 }
 
 inputData.inputEle.addEventListener('keyup', inputLvlQuery);
@@ -479,7 +450,7 @@ async function initGuide() {
     }
   }
   await questSectMenu({currentTarget:pageQuestMenu.firstChild});
-  contsM.openCont(infoQuestBody, true, {level:infoSect.recentLvl});
+  contsM.openCont(infoQuestBody, true, {level:infoSect.recentLvl}, 'rightsect');
   retreiveCrucialData(infoSect.recentLvl);
 }
 

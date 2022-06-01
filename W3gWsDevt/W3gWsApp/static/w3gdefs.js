@@ -56,7 +56,7 @@ const markData = {
     this.doneMode = !isShow;
   },
   selectRefrh: function() {
-    let hasSelected = document.querySelector('[data-selected=\"true\"]') || !this.selectOn;
+    let hasSelected = document.querySelector('[data-selected=\"true\"]') || !this.selectOn; // if select is on and has selected || if select is off -> need to revert
     this.selectBttn.style.setProperty('cursor', hasSelected ? 'revert' : 'not-allowed');
     return !!hasSelected;
   },
@@ -78,6 +78,7 @@ const infoSect = {
   },
   cateCls: 'info-note',
   recentLvl: parseInt(inputData.inputEle.value, 10),
+  isCrucial: true,
   cateConts: []
 };
 const menuNames = { //for easy code revision later
@@ -102,7 +103,6 @@ function allowEvt(mode=null) {
                        : [!queryData.isQueryActive && !markData.selectOn, 'Server is Busy OR in selection mode'];
 
   if (!isAllow) {
-    console.trace();
     console.log(messg);
   }
 
@@ -295,6 +295,7 @@ function finalData(dataInfo, isInclReg, custmCls, affFunc, noteFunc, doneFunc, m
 
   this.procdData = [];
   this.multiBool = multiBool;
+  this.multiData = dataInfo.is_multi ? {quest:dataId} : null;
   this.qInfo = `${dataId}#${'region_id' in dataInfo ? dataInfo.region_id : null}#${dataInfo.req_level}`;
 
   for (let questData of fixedData.concat(noteData)) {
@@ -467,7 +468,8 @@ function hasQuests(ele) {
 
 function firstChildQuest(ele) {
   // substitute: firstChild, firstElementChild, hasChildNodes, children
-  return Array.from(ele.children).find(chEle => 'info' in chEle.dataset);
+  let firstCh = Array.from(ele.children).find(chEle => 'info' in chEle.dataset);
+  return firstCh !== undefined ? firstCh : null;
 }
 
 //test: https://jsfiddle.net/e1aLbgv7/
@@ -588,7 +590,7 @@ function parsedEle() {
   return parsedAll(...arguments)[0];
 }
 
-// test: https://jsfiddle.net/dwqsp83L/
+// test: https://jsfiddle.net/q5ufvc32/
 function insertData(qData, contEle, sortBasis, ascS=true) {
   isEle(contEle, 'This Container must be an element');
   isEle(qData, 'quest data must be an element');
@@ -600,63 +602,44 @@ function insertData(qData, contEle, sortBasis, ascS=true) {
   let allqData = contEle.querySelectorAll('[data-info]');
   let dLength = allqData.length;
 
-  let hi = dLength - 1;
-  let lo = 0;
-  let lastIdx = null; // to avoid infinite loop, dividing by odd & even will always result to .5 or rouded by 1, thus if idx and lastIdx is same, need to less it by 1
-  // dividing by pair of odd or even numbers will bring even numbers, e.g. 6 + 10 [7, 8 9] / 2 = 8, 17 + 19 [18] / 2 = 18
-  // infinite loop: 0 + 1 = .5 -> 1; 0 + 1 = .5 -> 1
+  function linSrchR(arrData, cIdx) {
+    let nIdx = cIdx + 1;
+    let qCSort = parsedEle(arrData[cIdx])[sortBasis];
+    if (cIdx === 0 && (ascS && qISort <= qCSort || !ascS && qISort >= qCSort)) {
+      return arrData[cIdx];
+    }
+    if (nIdx === dLength) {
+      return null;
+    }
+    let qNSort = parsedEle(arrData[nIdx])[sortBasis];
+    return ((ascS && (qISort >= qCSort && qISort <= qNSort)) || (!ascS && (qISort <= qCSort && qISort >= qNSort))) ? arrData[nIdx]
+           : linSrchR(arrData, cIdx + 1);
+  }
 
-  function ifInsert(idx) {
-    let qAux = idx + 1;
-    let qCSort = parsedEle(allqData[idx])[sortBasis];
-    if (dLength === 1) {
-      return ((ascS && qISort <= qCSort) || (!ascS && qISort >= qCSort)) ? allqData[idx] : null;
+  function binSrchR(arrData, rtIdx, ltIdx, pIdx) {
+    let mIdx = Math.ceil((rtIdx + ltIdx) / 2);
+    mIdx = mIdx === pIdx ? mIdx - 1 : mIdx;
+    let nIdx = mIdx + 1;
+    if (mIdx === -1) {
+      return arrData[0];
     }
-    if (qAux === dLength) {
-      return false;
+    if (nIdx === dLength) {
+      return null;
     }
-    let qNSort = parsedEle(allqData[qAux])[sortBasis];
-    hi = ((ascS && qISort <= qNSort) || (!ascS && qISort >= qNSort)) ? idx : hi;
-    lo = ((ascS && qISort >= qCSort) || (!ascS && qISort <= qCSort)) ? idx : lo;
-    lastIdx = idx;
-    return ((ascS && (qISort >= qCSort && qISort <= qNSort)) || (!ascS && (qISort <= qCSort && qISort >= qNSort))) ? allqData[qAux] : false;
-    // ASC -> | 20, 21, 22, 23, 25, 26, 27, 29, 30, 31 | (lo = 0; hi = 10)
-    //   idx = 5 | i = 23 | at 25 | 23 >= 25 & <= 26 | false & true | isHi = true (lo = 0; hi = 5)
-    //   idx = 5 | i = 28 | at 25 | 28 >= 25 & <= 26 | true & false | isHi = false (lo = 5; hi = 10)
-    //   req -> false & false | 23 >= 25 & <= 22 | 28 >= 29 & <= 27 | both refers to DESC data | not applicable
-    //   23 >= 25 & <= 24 | false & true | (lo = 0; hi = 5)-> moving the search to the left, if this is DESC it will not found the position
-    // DESC -> | 31, 30, 29, 27, 26, 25, 24, 22, 21, 20 | (lo = 0; hi = 10)
-    //   idx = 5 | i = 23 | at 26 | 23 <= 26 & >= 25 | true & false | isHi = false (lo = 5; hi = 10)
-    //   idx = 5 | i = 28 | at 26 | 28 <= 26 & >= 25 | false & true | isHi = true  (lo = 0; hi = 5)
-    //   req -> false & false | 23 <= 22 & >= 25 | 28 <= 26 & >= 29 | both refers to ASC data | not applicable
-    // vrN data | vr1, vr2 | at vr1 | if ASC then if vrN > vr1 & < vr2 then true, if DESC then if vrN < vr1 & > vr2
-    //   e.g. ASC -> | 28, 30 | at 28 | 29 > 28 & < 30; DESC | 30, 28 | at 30 | 29 < 30 & > 28
+    let qCSort = parsedEle(arrData[mIdx])[sortBasis];
+    let qNSort = parsedEle(arrData[nIdx])[sortBasis];
+    rtIdx = ((ascS && qISort <= qNSort) || (!ascS && qISort >= qNSort)) ? mIdx : rtIdx;
+    ltIdx = ((ascS && qISort >= qCSort) || (!ascS && qISort <= qCSort)) ? mIdx : ltIdx;
+    return ((ascS && (qISort >= qCSort && qISort <= qNSort)) || (!ascS && (qISort <= qCSort && qISort >= qNSort))) ? arrData[nIdx]
+           : binSrchR(arrData, rtIdx, ltIdx, mIdx);
   }
 
   if (dLength === 0) {
    contEle.appendChild(qData);
-   return true;
-  } else if (dLength < 4) {
-    for (let idx = 0; idx < dLength; idx++) {
-      let refNode = ifInsert(idx);
-      if (refNode || refNode === null) {
-        contEle.insertBefore(qData, refNode);
-        return true;
-      }
-    }
-  } else {
-    let worstC = Math.ceil(Math.log2(dLength));
-    for (let sCount = 1; sCount <= worstC; sCount++) {
-      let idx = Math.ceil((hi + lo) / 2);
-      let refNode = ifInsert(idx === lastIdx ? idx - 1 : idx);
-      if (refNode || refNode === null) {
-        contEle.insertBefore(qData, refNode);
-        return true;
-      }
-    }
+   return;
   }
-  contEle.insertBefore(qData, !ascS ? firstChildQuest(contEle) : null);
-  return true;
+
+  contEle.insertBefore(qData, dLength < 4 ? linSrchR(allqData, 0) : binSrchR(allqData, dLength - 1, 0, null));
 }
 
 function GenFetchInit(qrData, filData=null, getInfo=false, note=null) {
@@ -670,7 +653,7 @@ function GenFetchInit(qrData, filData=null, getInfo=false, note=null) {
       filter: filData,
       done: !(getInfo || note) ? markData.doneMode : null,
       redo: !(getInfo || note) ? !markData.doneMode : null,
-      query: getInfo ? getInfo : false,
+      query: getInfo,
       note: note
     }
   );
@@ -680,6 +663,7 @@ class ContMngr {
   constructor() {
     this.contUpdr = new Set();
     this.countrUpdr = new Set();
+    this.contCloser = new Map();
   }
   addContUpdater(func) {
     this.contUpdr.add(func);
@@ -687,7 +671,13 @@ class ContMngr {
   addCountrUpdater(func) {
     this.countrUpdr.add(func);
   }
-  openCont(contNm, isReus, filData, ...crtElePar) {
+  addContCloser(closerName, func) {
+    if(typeof closerName !== 'string') {
+      throw new Error(`closer name should be an string, not ${typeof closerName}`);
+    }
+    this.contCloser.set(closerName, func);
+  }
+  openCont(contNm, isReus, filData, closer, ...crtElePar) {
     //test: https://jsfiddle.net/avm9d62s/2/
     if (typeof filData !== 'object') {
       throw new Error('fiter data should be an object or null');
@@ -737,25 +727,28 @@ class ContMngr {
     }
     procCont.dataset.cont = (entFilData !== null) ? entFilData.map(filD => filD.join(':')).join('-') : '';
     procCont.dataset.isrmv = !!isReus;
+    procCont.dataset.closer = typeof closer === 'string' ? closer : 'unnamed';
     return procCont;
   }
-  closeCont(contEle, cleanCont=true, idfrs=null) {
+  closeCont(contEle, cleanCont=true, idfrs=null, updMode=false) {
     // test: https://jsfiddle.net/dc0xegfj/
     // contEle -> current container
     // cCont -> container wishes to open
     let chkSame = ky => ky in contEle && idfrs[ky] === contEle[ky];
     if (contEle !== null) isEle(contEle,'The container is not an Element');
-    let suspClose = (idfrs !== null && typeof idfrs === 'object') ? hasQuests(contEle) && Object.keys(idfrs).every(chkSame)
-                   : contEle === null || !hasQuests(contEle);
+    let suspClose = typeof idfrs === 'boolean' ? idfrs
+                    : (idfrs !== null && typeof idfrs === 'object') ?
+                      (hasQuests(contEle) && Object.keys(idfrs).every(chkSame))
+                    : contEle === null || !hasQuests(contEle);
     // if same note, True -> dont close it
    //  if have no quests or null, True -> dont close it
-    if (!suspClose) {
+    if (!suspClose || updMode) {
       let isReus = 'isrmv' in contEle.dataset ? JSON.parse(contEle.dataset.isrmv)
                    : !hasQuests(contEle) ? true : null;
       // empty container are assume to be reusable
       // a container with quest data should have data-cont
       // assume that the reusable container are empty at first
-      for (let contPar of ['cont', 'isrmv']) {
+      for (let contPar of ['cont', 'isrmv', 'closer']) {
         if (!(contPar in contEle.dataset)) {
           if (isReus !== null) continue;
           console.trace();
@@ -815,7 +808,7 @@ class ContMngr {
     if (allConts.length !== 0 && !markData.doneMode) {
       filtersBasis = consoFilter(parsedAll(allConts));
     }
-    let resultData = await queryInfo('/query/request-modif', new GenFetchInit(qrIds, filtersBasis));
+    let resultData = await queryInfo('/query/request-modif', new GenFetchInit(isRedoAll ? null : qrIds, filtersBasis));
     if (qrIds !== null && !isRedoAll && resultData.modified !== qrIds.length) {
       throw new Error(`Unexpected number of changes made: modified count ${resultData.modified} | marked data count ${qrIds.length} | Quest Ids ${qrIds.toString()}`);
     }
@@ -823,6 +816,9 @@ class ContMngr {
       for (let markedCont of markedConts) {
         markedCont.remove();
       }
+    }
+    if (resultData.err_r) {
+      throw new Error(`Error Detected: \n SQL Command executed = ${resultData.sql_cmd}\n Error Message: ${resultData.err_r}`);
     }
     let updateData = [
       [filtersBasis && resultData.result, this.contUpdr.values(), resultData.result],
@@ -835,8 +831,13 @@ class ContMngr {
       }
     }
     for (let cont of allConts) { // close empty containers
-      if (hasQuests(cont)) continue;
-      this.closeCont(cont);
+      let closerName = cont.dataset.closer;
+      if (closerName === 'unnamed') {
+        if (hasQuests(cont)) continue;
+        this.closeCont(cont, true, null, true);
+      } else if (this.contCloser.has(closerName)) {
+        this.contCloser.get(closerName)(cont);
+      }
     }
   }
 }
@@ -870,7 +871,8 @@ for (let infoSub of infoSect.infoSubs) {
 
 infoSect.infoSubs.forEach(infoSub => infoSect.cateConts.push(Array.from(infoSub.getElementsByClassName(infoSect.cateCls))));
 
-infoSect.infoRefresh = function(rmvData=false, isCrucial=true) {
+infoSect.infoRefresh = function(rmvData=false, isCrucial=null) {
+  this.isCrucial = typeof isCrucial === 'boolean' ? isCrucial : this.isCrucial;
   let isNote = false;
   let rmvFunc = cateCont => removeData(cateCont);
   let chkChFunc = cateBody => hasQuests(cateBody);
@@ -879,7 +881,7 @@ infoSect.infoRefresh = function(rmvData=false, isCrucial=true) {
     this.cateConts.forEach(rmvFunc);
     contsM.closeCont(infoQuestBody, false);
   } else {
-    contsM.openCont(infoQuestBody, true, hasQuests(infoSect.infoRegion) ? {region:infoSect.regionId} : {level:infoSect.recentLvl});
+    contsM.openCont(infoQuestBody, true, this.isCrucial ? {level:this.recentLvl} : {region:this.regionId, second:null}, 'rightsect');
   }
   for (let idx = 0; idx < this.cateConts.length; idx++) {
     let subNoteBool = this.cateConts[idx].some(chkChFunc);

@@ -3,6 +3,7 @@ import click
 from flask import Blueprint, jsonify
 from flask import request
 from W3gWsApp import w3gdbhandl
+import traceback
 
 query_bp = Blueprint('query', __name__, url_prefix='/query')
 
@@ -127,6 +128,8 @@ def quest_done():
     quest_aff = None
     count_summ = None
     modif_count = 0
+    err_r = None
+    sql_cmd = None
 
     if json_data['done'] or json_data['redo']:
         if quest_data != None:
@@ -143,25 +146,32 @@ def quest_done():
         elif json_data['redo']:
             cur_db.execute('SELECT quest_region.quest_id AS questId FROM quest_region WHERE quest_region.status_id = 2')
             quest_data = cur_db.fetchall()
+            if len(quest_data) == 0:
+                return;
             cur_db.execute(w3gdbhandl.gen_query_cmd(modif='redo-all'))
         modif_count = cur_db.rowcount
 
-        quest_ids = str(tuple(set([qr_id['questId'] for qr_id in quest_data])))
+        quest_ids_set = set([qr_id['questId'] for qr_id in quest_data])
+        quest_ids = f'({next(iter(quest_ids_set))})' if len(quest_ids_set) == 1 else str(tuple(quest_ids_set))
         if fils_basis:
-            cur_db.execute(
-                w3gdbhandl.gen_query_cmd(
-                    'mregion',
-                    select=['all_quests.cutoff', 'all_quests.category_id', 'CASE all_quests.region_id WHEN 1 THEN 1 ELSE 0 END AS ismulti'],
-                    where=w3gdbhandl.gen_filter(quest_ids, fils_basis)
-                )
-            )
-            result_query = cur_db.fetchall()
-            if len(result_query) > 0:
-                quest_aff = result_query
-        cur_db.execute('''SELECT 'REGION' AS count_type, region.id AS count_id, region.side_count AS count_num
-                          FROM region WHERE region.id != 1 UNION ALL
-                          SELECT 'CUTOFF', all_quests.id, all_quests.aff_count FROM all_quests
-                          WHERE all_quests.id IN (SELECT alq.cutoff FROM all_quests AS alq WHERE alq.id IN ?)''', (quest_ids, ))
+            fil_cmd = w3gdbhandl.gen_query_cmd(
+                          'mall',
+                          select=['all_quests.cutoff', 'all_quests.category_id', 'CASE all_quests.region_id WHEN 1 THEN 1 ELSE 0 END AS ismulti'],
+                          where=w3gdbhandl.gen_filter(quest_ids, fils_basis)
+                      )
+            try:
+                cur_db.execute(fil_cmd)
+                result_query = cur_db.fetchall()
+                if len(result_query) > 0:
+                    quest_aff = result_query
+            except:
+                err_r = traceback.format_exc()
+                sql_cmd = fil_cmd
+
+        cur_db.execute(f'''SELECT 'REGION' AS count_type, region.id AS count_id, region.side_count AS count_num
+                           FROM region WHERE region.id != 1 UNION ALL
+                           SELECT 'CUTOFF', all_quests.id, all_quests.aff_count FROM all_quests
+                           WHERE all_quests.id IN (SELECT alq.cutoff FROM all_quests AS alq WHERE alq.id IN {quest_ids} AND alq.cutoff IS NOT NULL)''')
         result_query = cur_db.fetchall()
         if len(result_query) > 0:
             count_summ = result_query
@@ -186,4 +196,4 @@ def quest_done():
     if modif_count > 0:
         conn_db.commit()
 
-    return jsonify(result=quest_aff, count=count_summ, modified=modif_count)
+    return jsonify(result=quest_aff, count=count_summ, modified=modif_count, err_r=err_r, sql_cmd=sql_cmd)
