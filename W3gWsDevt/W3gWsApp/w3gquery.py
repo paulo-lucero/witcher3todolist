@@ -132,31 +132,26 @@ def quest_done():
     sql_cmd = None
 
     if json_data['done'] or json_data['redo']:
+        modif_type = ('do' if json_data['done'] else 'redo') + '-set'
         if quest_data != None:
             for questreg_dict in quest_data:
                 for key_data in questreg_dict:
                     if not isinstance(questreg_dict[key_data], int) and not questreg_dict[key_data] == None:
                         raise TypeError(f'This {type(questreg_dict[key_data])} data type is not supported, for this value {questreg_dict[key_data]}')
-            cur_db.executemany(
-                w3gdbhandl.gen_query_cmd(
-                    modif='do-set' if json_data['done'] else 'redo-set' if json_data['redo'] else None
-                ),
-                tuple(quest_data)
-            )
-        elif json_data['redo']:
-            cur_db.execute('SELECT quest_region.quest_id AS questId FROM quest_region WHERE quest_region.status_id = 2')
+        else:
+            cur_db.execute('SELECT quest_region.quest_id AS questId, quest_region.region_id AS regionId FROM quest_region WHERE quest_region.status_id = 2')
             quest_data = cur_db.fetchall()
             if len(quest_data) == 0:
                 return;
-            cur_db.execute(w3gdbhandl.gen_query_cmd(modif='redo-all'))
-        modif_count = cur_db.rowcount
 
         quest_ids_set = set([qr_id['questId'] for qr_id in quest_data])
         quest_ids = f'({next(iter(quest_ids_set))})' if len(quest_ids_set) == 1 else str(tuple(quest_ids_set))
+
+        # query of affected quests
         if fils_basis:
             fil_cmd = w3gdbhandl.gen_query_cmd(
                           'mall',
-                          select=['all_quests.cutoff', 'all_quests.category_id', 'CASE all_quests.region_id WHEN 1 THEN 1 ELSE 0 END AS ismulti'],
+                          select=['all_quests.cutoff', 'all_quests.category_id', 'all_quests.is_multi'],
                           where=w3gdbhandl.gen_filter(quest_ids, fils_basis)
                       )
             try:
@@ -168,6 +163,18 @@ def quest_done():
                 err_r = traceback.format_exc()
                 sql_cmd = fil_cmd
 
+        # done or redo
+        cur_db.executemany(
+            w3gdbhandl.gen_query_cmd(
+                modif=modif_type
+            ),
+            tuple(quest_data)
+        )
+        modif_count = cur_db.rowcount
+        if modif_count != len(quest_data):
+            raise ValueError(f'Total Count Attempt Modification is {modif_count}, While the Total Count Requested Modification is {len(quest_data)}')
+
+        # query of count data
         cur_db.execute(f'''SELECT 'REGION' AS count_type, region.id AS count_id, region.side_count AS count_num
                            FROM region WHERE region.id != 1 UNION ALL
                            SELECT 'CUTOFF', all_quests.id, all_quests.aff_count FROM all_quests

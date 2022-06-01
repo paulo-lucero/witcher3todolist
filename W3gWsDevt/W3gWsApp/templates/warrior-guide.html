@@ -1,92 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <link rel="stylesheet" href="{{ url_for('static', filename='wr-style.css') }}">
-  <title>Witcher 3 Level Based Guide</title>
-</head>
-<body>
-  <div id="qnotes-body">
-    <div id="qnotes-overlay">
-      <h2 id="qnotes-header"></h2>
-      <div id="qnotes-menus"></div>
-      <div id="qnotes-data"></div>
-      <div id="qdone-data">
-        <div id="qdone-bttns">
-          <button id="undone-all" type="button">Mark as "undone" all quests</button>
-          <span class="select-mode">Select Quest</span>
-          <span class="cancel-mode">Cancel Selection</span>
-        </div>
-        <div id="done-quests">
-          <div id="done-menu">
-            <span id="recent-done">Recently</span>
-            <span id="all-done">All</span>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="{{ url_for('static', filename='wr-style.css') }}">
+    <title>Witcher 3 Level Based Guide</title>
+  </head>
+  <body>
+    <div id="qnotes-body">
+      <div id="qnotes-overlay">
+        <h2 id="qnotes-header"></h2>
+        <div id="qnotes-menus"></div>
+        <div id="qnotes-data"></div>
+        <div id="qdone-data">
+          <div id="qdone-bttns">
+            <button id="undone-all" type="button">Mark as "undone" all quests</button>
+            <span class="select-mode">Select Quest</span>
+            <span class="cancel-mode">Cancel Selection</span>
           </div>
-          <div id="done-data-cont"></div>
+          <div id="done-quests">
+            <div id="done-menu">
+              <span id="recent-done">Recently</span>
+              <span id="all-done">All</span>
+            </div>
+            <div id="done-data-cont"></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  <div id="confirm-body">
-    <div id="confirm-overlay">
-      <div id="warning-crucial">Crucial Quests Tab Opened: </div>
-      <div id="opened-crucial"></div>
-      <div id="buttons-data">
-        <button id="confirm-button">Confirm</button>
-        <button id="cancel-button">Cancel</button>
-      </div>
-    </div>
-  </div>
-  <div id="w3g-body">
-    <div id="quest-query">
-      <input type="text" value="Search quest here....">
-      <span id="level-query">
-        <input type="text" title="Insert Level here..." value="1">
-        <span id="input-arrowup" ></span>
-        <span id="input-arrowdown" ></span>
-      </span>
-      <span class="select-mode">Select Quest</span>
-      <span class="cancel-mode">Cancel Selection</span>
-      <span id="done-display">Show Done Quests</span>
-    </div>
-    <div id="page-section">
-      <div id="quests-section">
-        <div id="qsect-menu"></div>
-        <div id="qsect-body"></div>
-      </div>
-      <div id="info-section">
-        <div class="info-subsect">
-          <div class="info-menu">Scavenger Quests</div>
-        </div>
-        <div class="info-subsect">
-          <div class="info-menu">Overlevel - High vulnerable</div>
-        </div>
-        <div class="info-subsect">
-          <div class="info-menu">Overlevel - Low vulnerable</div>
-        </div>
-        <div class="info-subsect">
-          <div class="info-menu">Overleveled</div>
-        </div>
-        <div class="info-subsect">
+    <div id="confirm-body">
+      <div id="confirm-overlay">
+        <div id="warning-crucial">Crucial Quests Tab Opened: </div>
+        <div id="opened-crucial"></div>
+        <div id="buttons-data">
+          <button id="confirm-button">Confirm</button>
+          <button id="cancel-button">Cancel</button>
         </div>
       </div>
     </div>
-    <div>
-      <h2>Test Section:</h2>
-      <button type="button" onclick="alert('Hello world!')">Click Me!</button>
-      <div>
-        <div id="color-test">Async Test - Click Here:</div>
-        <div id="color-body"></div>
+    <div id="w3g-body">
+      <div id="quest-query">
+        <input type="text" value="Search quest here....">
+        <span id="level-query">
+          <input type="text" title="Insert Level here..." value="1">
+          <span id="input-arrowup" ></span>
+          <span id="input-arrowdown" ></span>
+        </span>
+        <span class="select-mode">Select Quest</span>
+        <span class="cancel-mode">Cancel Selection</span>
+        <span id="done-display">Show Done Quests</span>
       </div>
-      <p> Check venv path: <a href="{{ url_for('testingenv.check_envpath') }}" target="_blank">Click Me!</a></p>
-      <p> Check working path: <a href="{{ url_for('testingenv.check_apppath') }}" target="_blank">Click Me!</a></p>
-      <p> Check if debug mode is enabled: <a href="{{ url_for('testingenv.check_debugmode') }}" target="_blank">Test Error!</a></p>
-      <p> Check database path: <a href="{{ url_for('testingenv.check_configdb') }}" target="_blank">DB check result!</a></p>
+      <div id="page-section">
+        <div id="quests-section">
+          <div id="qsect-menu"></div>
+          <div id="qsect-body"></div>
+        </div>
+        <div id="info-section">
+          <div class="info-subsect">
+            <div class="info-menu">Scavenger Quests</div>
+          </div>
+          <div class="info-subsect">
+            <div class="info-menu">Overlevel - High vulnerable</div>
+          </div>
+          <div class="info-subsect">
+            <div class="info-menu">Overlevel - Low vulnerable</div>
+          </div>
+          <div class="info-subsect">
+            <div class="info-menu">Overleveled</div>
+          </div>
+          <div class="info-subsect">
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-  <script src="{{ url_for('static', filename='w3gdefs.js') }}"></script>
-  <script src="{{ url_for('static', filename='w3gupdlstnrs.js') }}"></script>
-  <script src="{{ url_for('static', filename='w3gretrieve.js') }}"></script>
-  <script src="{{ url_for('static', filename='w3gtest.js') }}"></script>
-</body>
+    <script src="{{ url_for('static', filename='w3gdefs.js') }}"></script>
+    <script src="{{ url_for('static', filename='w3gupdlstnrs.js') }}"></script>
+    <script src="{{ url_for('static', filename='w3gretrieve.js') }}"></script>
+    <script src="{{ url_for('static', filename='w3gtest.js') }}"></script>
+  </body>
 </html>

@@ -230,7 +230,7 @@ notesData[menuNames.enmName] = new genNotesData(
   menuClass='enm-menu'
 );
 
-function finalData(dataInfo, isInclReg, custmCls, affFunc, noteFunc, doneFunc, multiFunc, confFunc) {
+function finalData(dataInfo, isInclReg, affFunc, noteFunc, doneFunc, multiFunc, confFunc) {
 // [displayAffected, showNotesOverlay, doneQuest, showMultiQuest, showDataConfirm]
 
   function genMenuData(menuName, eventFunc=null, menuIsEvt=null, menuCont=null, custmPar=null) {
@@ -249,8 +249,8 @@ function finalData(dataInfo, isInclReg, custmCls, affFunc, noteFunc, doneFunc, m
 
   let fixedData = [
     multiBool ?
-      new genMenuData('+', multiFunc, false, null, ['mult-reg', null, {'data-id':dataId}]) :
-      new genMenuData(null, doneFunc, false, 'input', ['quest-marker', null, {type:'checkbox'}]),
+      new genMenuData('+', multiFunc, false, null, ['mult-reg', null, {'data-id':dataId, 'data-ipttype':'multi'}]) :
+      new genMenuData(null, doneFunc, false, 'input', ['quest-marker', null, {type:'checkbox', 'data-ipttype':'marker'}]),
     new genMenuData(createUrl(dataInfo.quest_url, dataInfo.quest_name), null, false, null, [itemClass('quest-data')]),
     dataInfo.req_level ?
       new genMenuData(document.createTextNode(dataInfo.req_level), null, false, null, [itemClass('quest-level')]) :
@@ -472,6 +472,10 @@ function firstChildQuest(ele) {
   return firstCh !== undefined ? firstCh : null;
 }
 
+function getQuests(ele) {
+  return Array.from(ele.children).filter(chEle => 'info' in chEle.dataset);
+}
+
 //test: https://jsfiddle.net/e1aLbgv7/
 class EleData {
   constructor(forParse, ...notInc) {
@@ -590,12 +594,61 @@ function parsedEle() {
   return parsedAll(...arguments)[0];
 }
 
+
+// new genMenuData('+', multiFunc, false, null, ['mult-reg', null, {'data-id':dataId, 'data-ipttype':'multi'}]) :
+// new genMenuData(null, doneFunc, false, 'input', ['quest-marker', null, {type:'checkbox', 'data-ipttype':'marker'}]),
+// function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null)
+function changeQuestType(typ, questInfoEle, qId) {
+  let curTypeEle = questInfoEle.querySelector('[data-ipttype]');
+  if (typ !== 'multi' || typ !== 'marker' || curTypeEle === null) {
+    throw new Error('typ arg should be either \"multi\" or \"marker\" OR quest info container should have an input element');
+  }
+  if (curTypeEle.dataset.ipttype === typ) return;
+  let infoCont = questInfoEle.parentElement;
+  let clonedInfo = questInfoEle.cloneNode(true); //remove any event listeners
+  curTypeEle = clonedInfo.querySelector('[data-ipttype]');
+  let isMulti = typ === 'multi';
+  let newTypeEle = extdCreateEle(
+    isMulti ? 'span' : 'input',
+    isMulti ? '+' : null,
+    isMulti ? 'mult-reg' : 'quest-marker',
+    null,
+    isMulti ? {'data-id':qId, 'data-ipttype':typ} : {type:'checkbox', 'data-ipttype':typ}
+  );
+  newTypeEle.addEventListener(
+    'click',
+    isMulti ? showMultiQuest : questMarking
+  );
+  if (isMulti) {
+    contsM.openCont(newTypeEle, false, {quest:qId}, 'multiInfo');
+    clonedInfo.appendChild(extdCreateEle('div', null, 'multi-notes'));
+    clonedInfo.dataset.multi = clonedInfo.dataset.info;
+    delete clonedInfo.dataset.info;
+  } else {
+    clonedInfo.querySelector('.multi-notes').remove();
+    clonedInfo.addEventListener('mouseenter', inputVisibility);
+    clonedInfo.addEventListener('mouseleave', inputVisibility);
+    clonedInfo.dataset.info = clonedInfo.dataset.multi;
+    delete clonedInfo.dataset.multi;
+  }
+  clonedInfo.replaceChild(newTypeEle, curTypeEle);
+  infoCont.replaceChild(clonedInfo, questInfoEle);
+}
+
 // test: https://jsfiddle.net/q5ufvc32/
 function insertData(qData, contEle, sortBasis, ascS=true) {
   isEle(contEle, 'This Container must be an element');
   isEle(qData, 'quest data must be an element');
 
-  let qISort = parsedEle(qData)[sortBasis];
+  let qParsed = parsedEle(qData);
+  // check for same id for multi region quests
+  let sameId = contEle.querySelector(`[data-info^=${qParsed.questId}]`);
+  if (sameId) {
+    changeQuestType('multi', qData, qParsed.questId);
+    return;
+  }
+
+  let qISort = qParsed[sortBasis];
   if (qISort === undefined) {
     throw new Error('Can\'t be undefined');
   }

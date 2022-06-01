@@ -11,7 +11,7 @@ async function displayAffected(evt) {
   noteUl.appendChild(genNoteHeader(document.createElement('li'), 'span', 4)); // header
   for (let dataNote of dataNotes) {
     noteli = document.createElement('li');
-    noteUl.appendChild(genQueryData(dataNote, noteli, 5));
+    noteUl.appendChild(genQueryData(dataNote, noteli, 5, null, true));
   }
   sect.appendChild(noteUl);
 }
@@ -81,9 +81,9 @@ function closeNotesOverlay(evt) {//closing overlay notes menu
   }
 }
 
-function genQueryData(consoInfos, sect, cutCol=null, isInclReg=null, custmCls=null) {
+function genQueryData(consoInfos, sect, cutCol=null, isInclReg=null, addMultiData=false) {
   let dataFuncs = [displayAffected, showNotesOverlay, questMarking, showMultiQuest, showDataConfirm];
-  let questInfos = new finalData(consoInfos, isInclReg, Array.isArray(custmCls) ? custmCls : null, ...dataFuncs);
+  let questInfos = new finalData(consoInfos, isInclReg, ...dataFuncs);
   let finalproct = typeof cutCol === 'number' ? questInfos.procdData.slice(0, cutCol) : questInfos.procdData;
   for (let questInfo of finalproct) {
     let sectEle = questInfo.menuCont;
@@ -105,10 +105,14 @@ function genQueryData(consoInfos, sect, cutCol=null, isInclReg=null, custmCls=nu
   }
   if (questInfos.multiBool) {
     sect.appendChild(extdCreateEle('div', null, 'multi-notes'));
+    sect.dataset.multi = questInfos.qInfo;
   } else {
     sect.dataset.info = questInfos.qInfo;
     sect.addEventListener('mouseenter', inputVisibility);
     sect.addEventListener('mouseleave', inputVisibility);
+  }
+  if (addMultiData && questInfos.multiData) {
+    contsM.openCont(sect.querySelector('[data-ipttype]'), false, questInfos.multiData, 'multiInfo');
   }
   sect.className = 'quest-container';
   return sect;
@@ -238,7 +242,7 @@ async function retreiveCrucialData(queryLevel) {
                      : questLevel < hRiskBasis ? 3
                      : null;
         if (typeData !== null) {
-          infoSect.cateConts[typeData][cateIndx].appendChild(genQueryData(qCrucialInfo, document.createElement('div'), 5));
+          infoSect.cateConts[typeData][cateIndx].appendChild(genQueryData(qCrucialInfo, document.createElement('div'), 5, null, true));
         }
       }
     }

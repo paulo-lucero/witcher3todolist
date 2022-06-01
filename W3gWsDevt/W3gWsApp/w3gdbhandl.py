@@ -110,7 +110,7 @@ def gen_query_cmd(styl='all', **comb):
         default_cmd = {
             'select': {
                 'cmd_head': 'SELECT',
-                'fixed': ' all_quests.id, all_quests.quest_name, all_quests.quest_url, all_quests.req_level',
+                'fixed': ' all_quests.id, all_quests.quest_name, all_quests.quest_url, all_quests.req_level, all_quests.is_multi',
                 'allq': ', all_quests.region_id',
                 'qrr': ', quest_region.region_id',
                 'reg_name': ', region.region_name',
@@ -186,7 +186,7 @@ def gen_filter(qr_ids, fils):
         'cutoff': 'all_quests.cutoff =?',
         'quest': 'quest_region.quest_id =?'
     }
-    whr = f"quest_region.quest_id IN {qr_ids} AND (?)"
+    whr = f"quest_region.quest_id IN {qr_ids} AND quest_region.status_id = 2 AND (?)"
     fils_whr = []
     septr = ' AND '
 
