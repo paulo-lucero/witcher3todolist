@@ -1,8 +1,5 @@
-# encrypting database
 from chunkcrypt.cryptchunk import downl_decrypt
-import requests
 import os
-import math
 
 def db_setup():
     cur_db_name = os.path.join(os.path.dirname(__file__), 'w3database.db')

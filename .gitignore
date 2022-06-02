@@ -1,9 +1,11 @@
 *.db
 *.pyc
-*.txt
+*note*.txt
 W3gDbDevt/
 tests/
-W3gVrenv/
+*vrenv*/
+*venv*/
+*vir*/
 __pycache__/
 W3gWsDevt/*.bat
 W3gWsProto/
