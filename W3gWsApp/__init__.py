@@ -8,7 +8,7 @@ import os
 # https://flask.palletsprojects.com/en/2.0.x/extensiondev/
 
 def main_app():
-    from W3gWsApp.dbmgnt import DefConfig
+    from W3gWsApp.w3config import DefConfig
     w3g_app = Flask(__name__)
     w3g_app.config.from_object(DefConfig())
 

@@ -1,2 +1,0 @@
-chunkcrypt>=0.0.1
-Flask>=2.0.2

@@ -1,12 +1,9 @@
 *.db
 *.pyc
+*.bat
+*.sh
 *note*.txt
-W3gDbDevt/
-tests/
-*vrenv*/
-*venv*/
-*vir*/
-__pycache__/
-W3gWsDevt/*.bat
-W3gWsProto/
 .jshintrc
+__pycache__/
+tests/
+.venv/
