@@ -249,8 +249,8 @@ function finalData(dataInfo, isInclReg, affFunc, noteFunc, doneFunc, multiFunc, 
 
   let fixedData = [
     multiBool ?
-      new genMenuData('+', multiFunc, false, null, ['mult-reg', null, {'data-id':dataId, 'data-ipttype':'multi'}]) :
-      new genMenuData(null, doneFunc, false, 'input', ['quest-marker', null, {type:'checkbox', 'data-ipttype':'marker'}]),
+      new genMenuData('+', multiFunc, false, null, ['mult-reg', null, {'data-id':dataId}]) :
+      new genMenuData(null, doneFunc, false, 'input', ['quest-marker', null, {type:'checkbox'}]),
     new genMenuData(createUrl(dataInfo.quest_url, dataInfo.quest_name), null, false, null, [itemClass('quest-data')]),
     dataInfo.req_level ?
       new genMenuData(document.createTextNode(dataInfo.req_level), null, false, null, [itemClass('quest-level')]) :
@@ -451,8 +451,8 @@ function uniqueQRid(qrIds) {
   }
   return procdQR;
 }
-//let te = [[1, 2], [3, 4], [4, 5] ,[1, 2], [6, 7]];
-//console.log(testUnique(te));
+// let te = [[1, 2], [3, 4], [4, 5] ,[1, 2], [6, 7]];
+// console.log(testUnique(te));
 
 function isEle(ele, msg=null) {
   if (ele !== null && typeof ele === 'object' && ele.nodeType === Node.ELEMENT_NODE) return true;
@@ -476,7 +476,7 @@ function getQuests(ele) {
   return Array.from(ele.children).filter(chEle => 'info' in chEle.dataset);
 }
 
-//test: https://jsfiddle.net/e1aLbgv7/
+// test: https://jsfiddle.net/e1aLbgv7/
 class EleData {
   constructor(forParse, ...notInc) {
     if (typeof forParse === 'string') {
@@ -508,7 +508,7 @@ class EleData {
       for (let idx = 0; idx < basisParse.length; idx++) {
         let infoVal = parseVal(spltd[idx]);
         if (notInc.length > 0) {
-          if(!notInc.includes(basisParse[idx])) parsedInfo[basisParse[idx]] = infoVal;
+          if (!notInc.includes(basisParse[idx])) parsedInfo[basisParse[idx]] = infoVal;
         } else {
           parsedInfo[basisParse[idx]] = infoVal;
         }
@@ -565,21 +565,25 @@ class EleData {
     for (let [rawData, basisParse] of uniqueData.entries()) {
       this.procd.push(basisParse ? byConfig(rawData, basisParse) : bySelf(rawData));
     }
-    if(this.eles.length !== this.procd.length) {
+    if (this.eles.length !== this.procd.length) {
       throw new Error(`Something went wrong not all element data are parsed: parsed count is ${this.procd.length} while count of elements are ${this.eles.length}`);
     }
   }
+
   get parsed() {
     return this.procd;
   }
+
   getIdx(ky, vl) {
     return this.parsed.findIndex(dt => dt[ky] === vl);
   }
+
   getEleAll(ky, vl) {
     let parsedIdx = this.getIdx(ky, vl);
     if (parsedIdx === -1) return null;
     return this.eles[parsedIdx];
   }
+
   getEle(ky, vl) {
     let allEles = this.getEleAll(ky, vl);
     return (allEles !== null) ? allEles[0] : allEles;
@@ -594,57 +598,21 @@ function parsedEle() {
   return parsedAll(...arguments)[0];
 }
 
-
-// new genMenuData('+', multiFunc, false, null, ['mult-reg', null, {'data-id':dataId, 'data-ipttype':'multi'}]) :
-// new genMenuData(null, doneFunc, false, 'input', ['quest-marker', null, {type:'checkbox', 'data-ipttype':'marker'}]),
-// function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null)
-function changeQuestType(typ, questInfoEle, qId) {
-  let curTypeEle = questInfoEle.querySelector('[data-ipttype]');
-  if (typ !== 'multi' || typ !== 'marker' || curTypeEle === null) {
-    throw new Error('typ arg should be either \"multi\" or \"marker\" OR quest info container should have an input element');
-  }
-  if (curTypeEle.dataset.ipttype === typ) return;
-  let infoCont = questInfoEle.parentElement;
-  let clonedInfo = questInfoEle.cloneNode(true); //remove any event listeners
-  curTypeEle = clonedInfo.querySelector('[data-ipttype]');
-  let isMulti = typ === 'multi';
-  let newTypeEle = extdCreateEle(
-    isMulti ? 'span' : 'input',
-    isMulti ? '+' : null,
-    isMulti ? 'mult-reg' : 'quest-marker',
-    null,
-    isMulti ? {'data-id':qId, 'data-ipttype':typ} : {type:'checkbox', 'data-ipttype':typ}
-  );
-  newTypeEle.addEventListener(
-    'click',
-    isMulti ? showMultiQuest : questMarking
-  );
-  if (isMulti) {
-    contsM.openCont(newTypeEle, false, {quest:qId}, 'multiInfo');
-    clonedInfo.appendChild(extdCreateEle('div', null, 'multi-notes'));
-    clonedInfo.dataset.multi = clonedInfo.dataset.info;
-    delete clonedInfo.dataset.info;
-  } else {
-    clonedInfo.querySelector('.multi-notes').remove();
-    clonedInfo.addEventListener('mouseenter', inputVisibility);
-    clonedInfo.addEventListener('mouseleave', inputVisibility);
-    clonedInfo.dataset.info = clonedInfo.dataset.multi;
-    delete clonedInfo.dataset.multi;
-  }
-  clonedInfo.replaceChild(newTypeEle, curTypeEle);
-  infoCont.replaceChild(clonedInfo, questInfoEle);
-}
-
 // test: https://jsfiddle.net/q5ufvc32/
-function insertData(qData, contEle, sortBasis, ascS=true) {
+function insertData(qData, contEle, sortBasis, ascS=true, nodupl=true) {
   isEle(contEle, 'This Container must be an element');
   isEle(qData, 'quest data must be an element');
 
   let qParsed = parsedEle(qData);
   // check for same id for multi region quests
-  let sameId = contEle.querySelector(`[data-info^=${qParsed.questId}]`);
-  if (sameId) {
-    changeQuestType('multi', qData, qParsed.questId);
+  const sameId = contEle.querySelector(`[data-info^="${qParsed.questId}#"]`);
+  if (sameId && nodupl) {
+    // need to insert the opened notes to the qData
+    // get the data-cont of the sameId.parentNode. Only the direct child. use "element>element"
+    // need to replace multi container element or just make it re-create every opening
+    sameId.parentNode.replaceChild(qData, sameId);
+    // console.log('A element with same quest ID was found');
+    // console.log(sameId);
     return;
   }
 
@@ -718,20 +686,24 @@ class ContMngr {
     this.countrUpdr = new Set();
     this.contCloser = new Map();
   }
+
   addContUpdater(func) {
     this.contUpdr.add(func);
   }
+
   addCountrUpdater(func) {
     this.countrUpdr.add(func);
   }
+
   addContCloser(closerName, func) {
     if(typeof closerName !== 'string') {
       throw new Error(`closer name should be an string, not ${typeof closerName}`);
     }
     this.contCloser.set(closerName, func);
   }
+
   openCont(contNm, isReus, filData, closer, ...crtElePar) {
-    //test: https://jsfiddle.net/avm9d62s/2/
+    // test: https://jsfiddle.net/avm9d62s/2/
     if (typeof filData !== 'object') {
       throw new Error('fiter data should be an object or null');
     }
@@ -783,6 +755,7 @@ class ContMngr {
     procCont.dataset.closer = typeof closer === 'string' ? closer : 'unnamed';
     return procCont;
   }
+
   closeCont(contEle, cleanCont=true, idfrs=null, updMode=false) {
     // test: https://jsfiddle.net/dc0xegfj/
     // contEle -> current container
@@ -819,6 +792,7 @@ class ContMngr {
     }
     return suspClose;
   }
+
   async update(isRedoAll=false) {
     //test: https://jsfiddle.net/d2qzb6w3/3/
     let uniqFil = new Map();

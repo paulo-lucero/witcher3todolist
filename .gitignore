@@ -6,4 +6,6 @@
 .jshintrc
 __pycache__/
 tests/
+devt/
 .venv/
+node_modules/

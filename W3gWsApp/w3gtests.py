@@ -1,6 +1,4 @@
-import flask
-from flask import Blueprint, current_app, jsonify
-import os
+from flask import Blueprint, jsonify
 
 tests_bp = Blueprint('testingenv', __name__, url_prefix='/testingenv')
 
@@ -62,3 +60,21 @@ def get_pragmas():
                 pragmas[pragma_name] = pragma_setting
 
     return jsonify(pragmas)
+
+
+@tests_bp.route('/testbefreq', methods=['PATCH'])
+def test_redo():
+    from W3gWsApp.w3gdbhandl import conn_w3gdb
+    from flask import request
+    w3db_con = conn_w3gdb()
+    w3db_cur = w3db_con.cursor()
+    json_data = request.get_json()
+    if json_data['redo']:
+        w3db_cur.execute('INSERT INTO affected_quests (quest_id, region_id) VALUES (65, 4)')
+        w3db_cur.execute('''
+            SELECT all_quests.id, all_quests.quest_name, all_quests.quest_url 
+            FROM affected_quests INNER JOIN all_quests ON all_quests.id = affected_quests.quest_id
+            ''')
+    result_test = w3db_cur.fetchall()
+    return jsonify(result_test=result_test if len(result_test) else None)
+        

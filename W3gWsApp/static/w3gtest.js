@@ -88,20 +88,19 @@ async function getPragmaSettings(displayAll=false) {
     notFound: [],
     notSame: {},
     allSame: null
-  }
+  };
 
   for (let pragmaSetting in pragmaSettings) {
     if (pragmaSetting in defPragmaSets) {
       let defValue = defPragmaSets[pragmaSetting];
-      let curValue = pragmaSettings[pragmaSetting]
+      let curValue = pragmaSettings[pragmaSetting];
       if (curValue !== defValue) {
-        resultCheck.notSame[pragmaSetting] = {defaultValue: defValue, setValue: curValue};
+        resultCheck.notSame[pragmaSetting] = { defaultValue: defValue, setValue: curValue };
       }
     } else {
       resultCheck.notFound.push(pragmaSetting);
     }
   }
-
 
   if (resultCheck.notFound.length === 0) {
     resultCheck.notFound = null;
@@ -111,9 +110,26 @@ async function getPragmaSettings(displayAll=false) {
     resultCheck.notSame = null;
   }
 
-  resultCheck.allSame = !resultCheck.notFound && !resultCheck.notSame
+  resultCheck.allSame = !resultCheck.notFound && !resultCheck.notSame;
 
   console.log(resultCheck);
 
   if (displayAll) console.log(pragmaSettings);
+}
+
+async function testTem() {
+  let testResult = await queryInfo('/testingenv/testbefreq', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(
+      {
+        redo: true
+      }
+    )
+  });
+  if (testResult.result_test !== null) {
+    console.log(testResult.result_test);
+  }
 }

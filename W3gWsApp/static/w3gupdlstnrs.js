@@ -110,14 +110,3 @@ contsM.addContCloser(
     infoSect.infoRefresh();
   }
 );
-
-contsM.addContCloser(
-  'multiInfo',
-  function(cont) {
-    let questInfo = cont.parentElement;
-    let multiCont = questInfo.querySelector('.multi-notes');
-    if (getQuests(multiCont).length > 1) return;
-    let qId = parsedEle(questInfo).questId;
-    changeQuestType('marker', questInfo, qId);
-  }
-);

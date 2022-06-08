@@ -1,3 +1,4 @@
+from pydoc import cli
 import sqlite3
 import re
 import click
@@ -23,6 +24,26 @@ def close_w3gdb(e=None):
     if w3gdb is not None:
         w3gdb.close()
         click.echo(click.style('Database Closed', fg='bright_green'))
+
+def create_tempdb(db_cur, id_qr, is_redo):
+    db_cur.execute('''  
+        CREATE TEMPORARY TABLE IF NOT EXISTS changes_quest (
+          quest_id INTEGER,
+          region_id INTEGER
+        );''')
+    if id_qr is None:
+        db_cur.execute(f'''
+            INSERT INTO changes_quest (quest_id, region_id) 
+            SELECT quest_region.quest_id, quest_region.region_id 
+            FROM quest_region WHERE quest_region.status_id = {2 if is_redo else 1}''')
+    else:
+        for questreg_dict in id_qr:
+            for key_data in questreg_dict:
+                if not isinstance(questreg_dict[key_data], int) and not questreg_dict[key_data] == None:
+                    raise TypeError(f'This {type(questreg_dict[key_data])} data type is not supported, for this value {questreg_dict[key_data]}')
+        db_cur.executemany('INSERT INTO changes_quest (quest_id, region_id) VALUES (:questId, :regionId)', id_qr) # id_qr need to be unique set
+    return db_cur.rowcount
+
 
 @click.command('init-db')
 @with_appcontext
@@ -107,12 +128,15 @@ def gen_query_cmd(styl='all', **comb):
         }
 
     else:
+        chg_mode = 'chall'
+        fr_region_id = 'changes_quest.region_id' if styl == chg_mode else 'quest_region.region_id'
         default_cmd = {
             'select': {
                 'cmd_head': 'SELECT',
                 'fixed': ' all_quests.id, all_quests.quest_name, all_quests.quest_url, all_quests.req_level, all_quests.is_multi',
                 'allq': ', all_quests.region_id',
                 'qrr': ', quest_region.region_id',
+                'chg': ', changes_quest.region_id',
                 'reg_name': ', region.region_name',
                 'notes': ''', all_quests.qwt_count AS qwt,
                             all_quests.aff_count AS cut,
@@ -122,18 +146,21 @@ def gen_query_cmd(styl='all', **comb):
                 'cmd_head': ' FROM',
                 'allq': ' all_quests',
                 'qrr': ' quest_region INNER JOIN all_quests ON all_quests.id = quest_region.quest_id',
-                'reg_name': f" INNER JOIN region ON region.id = {'quest_region.region_id' if re.match('^m', styl) else 'all_quests.region_id'}"
+                'reg_name': f" INNER JOIN region ON region.id = {fr_region_id if re.match('^m', styl) or styl == chg_mode else 'all_quests.region_id'}",
+                'chg': ' changes_quest INNER JOIN all_quests ON all_quests.id = changes_quest.quest_id'
             },
             'where': {
                 'cmd_head': ' WHERE',
                 'allq': ' all_quests.undone_count >= 1',
-                'qrr': ' quest_region.status_id = 1'
+                'qrr': ' quest_region.status_id = 1',
+                'chg': ''
             }
         }
 
         styls_cmd = {
             'all': ['fixed', 'allq', 'reg_name', 'notes'],
             'mall': ['fixed', 'qrr', 'reg_name', 'notes'],
+            chg_mode: ['fixed', 'chg', 'reg_name', 'notes'],
             'region': ['fixed', 'allq', 'reg_name'],
             'mregion': ['fixed', 'qrr', 'reg_name'],
             'notes': ['fixed', 'allq', 'notes'],
@@ -176,17 +203,17 @@ def gen_query_cmd(styl='all', **comb):
 
     return re.sub('\s{2,}', ' ', sql_cmd.replace('\n', ' '))
 
-def gen_filter(qr_ids, fils):
+def gen_filter(fils):
     val_def = {
         'main': 'all_quests.category_id = 1',
         'second': 'all_quests.category_id != 1',
         'category': 'all_quests.category_id =?',
-        'region': 'quest_region.region_id =?',
+        'region': 'changes_quest.region_id =?',
         'level': 'all_quests.req_level <=?',
         'cutoff': 'all_quests.cutoff =?',
-        'quest': 'quest_region.quest_id =?'
+        'quest': 'changes_quest.quest_id =?'
     }
-    whr = f"quest_region.quest_id IN {qr_ids} AND quest_region.status_id = 2 AND (?)"
+    whr = f"(?)"
     fils_whr = []
     septr = ' AND '
 

@@ -122,7 +122,7 @@ def quest_info(id_info):
 def quest_done():
     conn_db = w3gdbhandl.conn_w3gdb()
     cur_db = conn_db.cursor()
-    json_data = request.get_json(cache=False) #dont know why form attribute wont work
+    json_data = request.get_json(cache=False) 
     quest_data = json_data['questData'] #format : [{'regionId': int, 'questId': int}, ...]
     fils_basis = json_data['filter']
     quest_aff = None
@@ -132,53 +132,60 @@ def quest_done():
     sql_cmd = None
 
     if json_data['done'] or json_data['redo']:
-        modif_type = ('do' if json_data['done'] else 'redo') + '-set'
-        if quest_data != None:
-            for questreg_dict in quest_data:
-                for key_data in questreg_dict:
-                    if not isinstance(questreg_dict[key_data], int) and not questreg_dict[key_data] == None:
-                        raise TypeError(f'This {type(questreg_dict[key_data])} data type is not supported, for this value {questreg_dict[key_data]}')
-        else:
-            cur_db.execute('SELECT quest_region.quest_id AS questId, quest_region.region_id AS regionId FROM quest_region WHERE quest_region.status_id = 2')
-            quest_data = cur_db.fetchall()
-            if len(quest_data) == 0:
-                return;
+        modif_type = ('do' if json_data['done'] else 'redo')
+        # insert quest_id and region_id in a temporary db, that have status changed
+        # Need to store the quest_id and region_id in a temp db, because I can't query by set of quest_id and region_id
+        no_of_changes = w3gdbhandl.create_tempdb(cur_db, quest_data, json_data['redo'])
 
-        quest_ids_set = set([qr_id['questId'] for qr_id in quest_data])
-        quest_ids = f'({next(iter(quest_ids_set))})' if len(quest_ids_set) == 1 else str(tuple(quest_ids_set))
+        # done or redo
+        if quest_data != None:
+            cur_db.executemany(
+                w3gdbhandl.gen_query_cmd(
+                    modif=modif_type + '-set'
+                ),
+                tuple(quest_data)
+            )
+        else:
+            cur_db.execute(
+                w3gdbhandl.gen_query_cmd(
+                    modif=modif_type + '-all'
+                )
+            )
+        modif_count = cur_db.rowcount
+        if modif_count != no_of_changes:
+            raise ValueError(f'Total Count Attempt Modification is {modif_count}, While the Total Count Requested Modification is {no_of_changes}')
 
         # query of affected quests
         if fils_basis:
             fil_cmd = w3gdbhandl.gen_query_cmd(
-                          'mall',
-                          select=['all_quests.cutoff', 'all_quests.category_id', 'all_quests.is_multi'],
-                          where=w3gdbhandl.gen_filter(quest_ids, fils_basis)
+                          'chall',
+                          select=['all_quests.cutoff', 'all_quests.category_id'],
+                          where=w3gdbhandl.gen_filter(fils_basis)
                       )
             try:
                 cur_db.execute(fil_cmd)
                 result_query = cur_db.fetchall()
                 if len(result_query) > 0:
                     quest_aff = result_query
+                # raise ValueError('Test Error - Execution Success')
+                # sql_cmd = fil_cmd # for debug
             except:
                 err_r = traceback.format_exc()
                 sql_cmd = fil_cmd
 
-        # done or redo
-        cur_db.executemany(
-            w3gdbhandl.gen_query_cmd(
-                modif=modif_type
-            ),
-            tuple(quest_data)
-        )
-        modif_count = cur_db.rowcount
-        if modif_count != len(quest_data):
-            raise ValueError(f'Total Count Attempt Modification is {modif_count}, While the Total Count Requested Modification is {len(quest_data)}')
-
         # query of count data
-        cur_db.execute(f'''SELECT 'REGION' AS count_type, region.id AS count_id, region.side_count AS count_num
-                           FROM region WHERE region.id != 1 UNION ALL
-                           SELECT 'CUTOFF', all_quests.id, all_quests.aff_count FROM all_quests
-                           WHERE all_quests.id IN (SELECT alq.cutoff FROM all_quests AS alq WHERE alq.id IN {quest_ids} AND alq.cutoff IS NOT NULL)''')
+        cur_db.execute(f'''
+            SELECT 'REGION' AS count_type, region.id AS count_id, region.side_count AS count_num
+            FROM region WHERE region.id != 1 
+            UNION ALL
+            SELECT 'CUTOFF', all_quests.id, all_quests.aff_count FROM all_quests
+            WHERE 
+            all_quests.id IN (
+                SELECT DISTINCT all_quests.cutoff 
+                FROM changes_quest INNER JOIN all_quests ON all_quests.id = changes_quest.quest_id
+                WHERE all_quests.cutoff >= 0
+            ) 
+            AND all_quests.aff_count >= 0''')
         result_query = cur_db.fetchall()
         if len(result_query) > 0:
             count_summ = result_query

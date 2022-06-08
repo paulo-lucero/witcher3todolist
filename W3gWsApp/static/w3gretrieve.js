@@ -26,7 +26,7 @@ async function displayNote(evt) {
       noteUl.className = this.noteClass;
       noteUl.appendChild(genNoteHeader(document.createElement('li'), 'span', this.noteHeaders)); // header
       for (let dataNote of dataNotes) {
-        noteli = document.createElement('li');
+        const noteli = document.createElement('li');
         for (let [dataClass, dataKey] of this.noteItems) {
           let noteSpan = document.createElement('span');
           noteSpan.className = dataClass;
@@ -105,16 +105,12 @@ function genQueryData(consoInfos, sect, cutCol=null, isInclReg=null, addMultiDat
   }
   if (questInfos.multiBool) {
     sect.appendChild(extdCreateEle('div', null, 'multi-notes'));
-    sect.dataset.multi = questInfos.qInfo;
   } else {
-    sect.dataset.info = questInfos.qInfo;
     sect.addEventListener('mouseenter', inputVisibility);
     sect.addEventListener('mouseleave', inputVisibility);
   }
-  if (addMultiData && questInfos.multiData) {
-    contsM.openCont(sect.querySelector('[data-ipttype]'), false, questInfos.multiData, 'multiInfo');
-  }
   sect.className = 'quest-container';
+  sect.dataset.info = questInfos.qInfo; // need to add this for quest searching functions like hasQuest() to work
   return sect;
 }
 
@@ -406,7 +402,7 @@ async function selectMode(evt) {
   markData.selectRefrh();
   selectData.dataSect.classList.toggle('select-on');
   selectData.canBttn.style.setProperty('display', markData.selectOn ? 'inline-block' : 'none');
-  //when selectOn change to false, all checked input should be unchecked
+  // when selectOn change to false, all checked input should be unchecked
 }
 
 inputData.inputEle.addEventListener('keyup', inputLvlQuery);
