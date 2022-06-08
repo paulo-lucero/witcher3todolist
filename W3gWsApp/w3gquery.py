@@ -138,19 +138,11 @@ def quest_done():
         no_of_changes = w3gdbhandl.create_tempdb(cur_db, quest_data, json_data['redo'])
 
         # done or redo
-        if quest_data != None:
-            cur_db.executemany(
-                w3gdbhandl.gen_query_cmd(
-                    modif=modif_type + '-set'
-                ),
-                tuple(quest_data)
-            )
-        else:
-            cur_db.execute(
-                w3gdbhandl.gen_query_cmd(
-                    modif=modif_type + '-all'
-                )
-            )
+        cur_db.execute(f'''
+            UPDATE quest_region 
+            SET status_id = {1 if json_data['redo'] else 2}, date_change = chq.date_change 
+            FROM (SELECT * FROM changes_quest) AS chq 
+            WHERE quest_region.quest_id = chq.quest_id AND quest_region.region_id = chq.region_id''')
         modif_count = cur_db.rowcount
         if modif_count != no_of_changes:
             raise ValueError(f'Total Count Attempt Modification is {modif_count}, While the Total Count Requested Modification is {no_of_changes}')

@@ -29,7 +29,8 @@ def create_tempdb(db_cur, id_qr, is_redo):
     db_cur.execute('''  
         CREATE TEMPORARY TABLE IF NOT EXISTS changes_quest (
           quest_id INTEGER,
-          region_id INTEGER
+          region_id INTEGER,
+          date_change INTEGER
         );''')
     if id_qr is None:
         db_cur.execute(f'''
@@ -41,7 +42,10 @@ def create_tempdb(db_cur, id_qr, is_redo):
             for key_data in questreg_dict:
                 if not isinstance(questreg_dict[key_data], int) and not questreg_dict[key_data] == None:
                     raise TypeError(f'This {type(questreg_dict[key_data])} data type is not supported, for this value {questreg_dict[key_data]}')
-        db_cur.executemany('INSERT INTO changes_quest (quest_id, region_id) VALUES (:questId, :regionId)', id_qr) # id_qr need to be unique set
+        if is_redo:
+            db_cur.executemany('INSERT INTO changes_quest (quest_id, region_id) VALUES (:questId, :regionId)', id_qr) # id_qr need to be unique set
+        else:
+            db_cur.executemany('INSERT INTO changes_quest (quest_id, region_id, date_change) VALUES (:questId, :regionId, :doneDate)', id_qr)
     return db_cur.rowcount
 
 
