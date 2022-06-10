@@ -140,9 +140,11 @@ def quest_done():
         # done or redo
         cur_db.execute(f'''
             UPDATE quest_region 
-            SET status_id = {1 if json_data['redo'] else 2}, date_change = chq.date_change 
-            FROM (SELECT * FROM changes_quest) AS chq 
-            WHERE quest_region.quest_id = chq.quest_id AND quest_region.region_id = chq.region_id''')
+            SET status_id = {1 if json_data['redo'] else 2}, 
+              date_change = chq.date_change 
+            FROM changes_quest AS chq 
+            WHERE quest_region.quest_id = chq.quest_id 
+              AND quest_region.region_id = chq.region_id''')
         modif_count = cur_db.rowcount
         if modif_count != no_of_changes:
             raise ValueError(f'Total Count Attempt Modification is {modif_count}, While the Total Count Requested Modification is {no_of_changes}')
