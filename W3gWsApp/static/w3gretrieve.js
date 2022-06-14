@@ -81,39 +81,6 @@ function closeNotesOverlay(evt) {//closing overlay notes menu
   }
 }
 
-function genQueryData(consoInfos, sect, cutCol=null, isInclReg=null, addMultiData=false) {
-  let dataFuncs = [displayAffected, showNotesOverlay, questMarking, showMultiQuest, showDataConfirm];
-  let questInfos = new finalData(consoInfos, isInclReg, ...dataFuncs);
-  let finalproct = typeof cutCol === 'number' ? questInfos.procdData.slice(0, cutCol) : questInfos.procdData;
-  for (let questInfo of finalproct) {
-    let sectEle = questInfo.menuCont;
-    let questData = questInfo.menuName;
-    if (questData !== null && questInfo.menuIsEvt && typeof questData !== 'object' || Array.isArray(questData)) {
-      let dataCont = extdCreateEle(
-        'span',
-        Array.isArray(questData) ? questData : document.createTextNode(questData)
-      );
-      stylng(dataCont, 'width', 'revert');
-      questData = dataCont;
-    }
-    let sectItem = extdCreateEle(sectEle, questData, ...questInfo.custmPar);
-    if (questInfo.eventFunc) {
-      let evtReceiver = questInfo.menuIsEvt ? questData : sectItem;
-      evtReceiver.addEventListener('click', questInfo.eventFunc);
-    }
-    sect.appendChild(sectItem);
-  }
-  if (questInfos.multiBool) {
-    sect.appendChild(extdCreateEle('div', null, 'multi-notes'));
-  } else {
-    sect.addEventListener('mouseenter', inputVisibility);
-    sect.addEventListener('mouseleave', inputVisibility);
-  }
-  sect.className = 'quest-container';
-  sect.dataset.info = questInfos.qInfo; // need to add this for quest searching functions like hasQuest() to work
-  return sect;
-}
-
 async function showDataConfirm(evt) {
   if (allowEvt()) {
     if (this.show) {
@@ -156,48 +123,51 @@ async function showDataConfirm(evt) {
     }
   }
 }
-
-function displayQuestData(infoCont, infosData, eleType, ...par) {
-  // if infoCont is a function, infoData will be passed to it and it should return an element where the infoData will be appended
-  for (let infoData of infosData) {
-    infoCont = typeof infoCont === 'function' ? infoCont(infoData) : infoCont;
-    let questCont = document.createElement(eleType);
-    infoCont.appendChild(genQueryData(infoData, questCont, ...par));
-  }
-}
-
+/* global IdRef */
 async function displayRegionSect(evt) {
   if (!allowEvt()) return;
-  let regionBody = evt.currentTarget.parentElement.querySelector('.region-body');
+  const regMenu = evt.currentTarget;
+  const regionBody = IdRef.getTarg(regMenu);
   let regionId = parseInt(regionBody.dataset.region, 10);
-  let wasClosed = contsM.closeCont(regionBody, true);
+  // let wasClosed = contsM.closeCont(regionBody, true);
+  // temporarily
+  const wasClosed = !hasQuests(regionBody);
+  if (!wasClosed) removeData(regionBody);
+  // end temp
   if (!wasClosed) return;
   let questInfos = await queryInfo(`/query/second-quests-regid-${regionId}`);
-  contsM.openCont(regionBody, true, {region:regionId, second:null});
+  // contsM.openCont(regionBody, true, {region:regionId, second:null});
   if (questInfos === null) {
     regionBody.appendChild(retreiveNull());
     return;
   }
+  const regContxt = new InfoContxt(regMenu, `r${regionId}`);
   regionBody.appendChild(genNoteHeader(document.createElement('div'), 'span', 4));
-  displayQuestData(regionBody, questInfos, 'div', 5);
+  displayQuestData(regionBody, questInfos, 'div', regContxt, 'noreg');
 }
 
+/* global InfoContxt */
 async function questSectMenu(evt) {
   if (!allowEvt()) return;
   let sectMenu = evt.currentTarget;
   let isMain = sectMenu.className === 'qmain-menu';
-  let sameNote = contsM.closeCont(pageQuestBody, true, isMain ? {className:'qmain-body'} : !!pageQuestBody.querySelector('.region-menu'));
+  // let sameNote = contsM.closeCont(pageQuestBody, true, isMain ? {className:'qmain-body'} : !!pageQuestBody.querySelector('.region-menu'));
+  // temporarily
+  const sameNote = (isMain && pageQuestBody.className === 'qmain-body') || (!isMain && !!pageQuestBody.querySelector('.region-menu'));
+  if (!sameNote) removeData(pageQuestBody);
+  // end temp
+  const lMainContxt = new InfoContxt(sectMenu, 'lm');
   if (sameNote) return;
   if (isMain) {
     let questInfos = await queryInfo('/query/main-quests-info');
-    contsM.openCont(pageQuestBody, true, {main:null});
+    // contsM.openCont(pageQuestBody, true, {main:null});
     pageQuestBody.className = 'qmain-body';
     if (questInfos === null) {
       pageQuestBody.appendChild(retreiveNull());
       return;
     }
     pageQuestBody.appendChild(genNoteHeader(document.createElement('div'), 'span'));
-    displayQuestData(pageQuestBody, questInfos, 'div', null, true);
+    displayQuestData(pageQuestBody, questInfos, 'div', lMainContxt);
   } else {
     let regionInfos = await queryInfo('/query/regions-info');
     pageQuestBody.className = 'qsec-body';
@@ -209,6 +179,8 @@ async function questSectMenu(evt) {
       let regionBody = extdCreateEle('div', null, eleCls='region-body');
       regionBody.dataset.region = regionInfo.id;
       regionMenu.addEventListener('click', displayRegionSect);
+      const lRegRef = new InfoContxt(sectMenu, 'lreg').createId(regionInfo.id);
+      lRegRef.addFor(regionMenu, regionBody);
       let regionSect = extdCreateEle('div', [regionMenu, regionBody], eleCls='region-sect');
       pageQuestBody.appendChild(regionSect);
     }
@@ -238,7 +210,7 @@ async function retreiveCrucialData(queryLevel) {
                      : questLevel < hRiskBasis ? 3
                      : null;
         if (typeData !== null) {
-          infoSect.cateConts[typeData][cateIndx].appendChild(genQueryData(qCrucialInfo, document.createElement('div'), 5, null, true));
+          infoSect.cateConts[typeData][cateIndx].appendChild(genQueryData(qCrucialInfo, document.createElement('div'), 5, null));
         }
       }
     }
@@ -450,7 +422,7 @@ async function initGuide() {
     }
   }
   await questSectMenu({currentTarget:pageQuestMenu.firstChild});
-  contsM.openCont(infoQuestBody, true, {level:infoSect.recentLvl}, 'rightsect');
+  // contsM.openCont(infoQuestBody, true, {level:infoSect.recentLvl}, 'rightsect');
   retreiveCrucialData(infoSect.recentLvl);
 }
 

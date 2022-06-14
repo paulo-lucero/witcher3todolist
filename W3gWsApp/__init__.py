@@ -26,7 +26,8 @@ def main_app():
 
     @w3g_app.route('/')
     def index_page():
-        firstPage = render_template('warrior-guide.html')
+        js_files = ['w3gdefs', 'w3gcontxt', 'w3gquestdata', 'w3gretrieve', 'w3gtest']
+        firstPage = render_template('warrior-guide.html', jsfs=js_files)
         return firstPage
 
     return w3g_app
