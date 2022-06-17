@@ -11,8 +11,8 @@
         "sourceType": "module"
     },
     "rules": {
-        "prefer-const": "warn",
         "space-before-function-paren": "off",
-        "semi": ["error", "always"]
+        "semi": ["error", "always"],
+        "no-unused-vars": "warn"
     }
 }

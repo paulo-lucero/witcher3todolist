@@ -6,7 +6,8 @@
   showNotesOverlay,
   questMarking,
   showMultiQuest,
-  showDataConfirm
+  showDataConfirm,
+  stylng
  */
 
 function GenNoteIdentf(qw, em, nt) {
@@ -185,6 +186,10 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all') {
     ],
     'quest-info-cont'
   );
+  stylng(infoCont, 'display', 'none');
+  for (const subInfo of infoCont.children) {
+    stylng(subInfo, 'display', 'none');
+  }
   sect.append(menuCont, infoCont);
   const infoReg = 'region_id' in questInfo ? questInfo.region_id : null;
   sect.className = 'quest-container';

@@ -279,6 +279,10 @@ body.in-query * {
   width: 7vw;
 }
 
+.cont-status-close {
+  display: none;
+}
+
 /* .cutoff-quest span, .cutoff-quest span a:link, .cutoff-quest span a:visited {
   color: red;
 } */

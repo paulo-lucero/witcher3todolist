@@ -121,9 +121,9 @@ function genEvtObj(evtFunc, evt) {
  * @param {string[]|string} eleCls
  * @param {string} idName
  * @param {object} custAtr
- * @returns {Node}
+ * @returns {Node|Element}
  */
-function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null) {
+function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null, data=null) {
   // assign "inhtml" as null, if there is no innerHTML
   let eleObj = document.createElement(eleName);
   if (inhtml) {
@@ -147,6 +147,11 @@ function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null) 
   }
   if (custAtr && typeof custAtr === 'object') {
     Object.keys(custAtr).forEach(eleAtr => eleObj.setAttribute(eleAtr, custAtr[eleAtr]));
+  }
+  if (data && typeof data === 'object') {
+    Object.keys(data).forEach(dataK => {
+      eleObj.dataset[dataK] = data[dataK];
+    });
   }
   return eleObj;
 }
@@ -322,16 +327,30 @@ function undsplyEle(bodyConts, preBool=null) {
   }
 }
 
-// let te = [[1, 2], [3, 4], [4, 5] ,[1, 2], [6, 7]];
-// console.log(testUnique(te));
-
-function isEle(ele, msg=null) {
-  if (ele !== null && typeof ele === 'object' && ele.nodeType === Node.ELEMENT_NODE) return true;
+/**
+ *
+ * @param {any|Element|HTMLElement|[any|Element|HTMLElement]} ele
+ * @param {null|String} msg
+ * @returns {Boolean}
+ */
+function isEle(ele, msg = null) {
+  const result = Array.isArray(ele)
+    ? ele.every(isEle)
+    : ele !== null && typeof ele === 'object' && ele.nodeType === Node.ELEMENT_NODE;
+  if (result) return true;
   if (typeof msg === 'string') {
     throw new Error(msg);
   } else {
     return false;
   }
+}
+
+function isEles(...args) {
+  let res = true;
+  for (const [obj, msg] of args) {
+    res = res && isEle(obj, msg + ' should an element');
+  }
+  return res;
 }
 
 function hasQuests(ele) {
