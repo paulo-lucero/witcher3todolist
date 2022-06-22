@@ -1,13 +1,13 @@
 /* global
-    extdCreateEle,
+    createEle,
     parsedEle,
     getAllQuests,
     getQuest,
     isEle,
     markData,
-    stylng,
     removeData,
-    isEles
+    isEles,
+    DataContxt
 */
 
 function isObj(obj) {
@@ -15,12 +15,33 @@ function isObj(obj) {
 }
 
 /**
- * For scenario where clicked same menu don't result to query and closing
+ *
+ * @param {Event} evt
+ * preferreable setup:
+ *  create function for the menu container of menu elements, this function called the isSameRqt()
+ *  then function could have multiple sub-instructions or functions for opening
  */
-function isSameRequest() {
-  // target
-  // receiver
-  // is target is empty -> problem: can't currently dynamically check the body of target that contains the data
+function isSameRqt(evt) {
+  const sameRqt = false;
+  const openCls = 'menu-opened';
+  const recvr = evt.currentTarget;
+  const targ = evt.target;
+  let curOpen = recvr.getElementsByClassName(openCls);
+
+  if (curOpen.length === 0) {
+    targ.classList.toggle(openCls);
+    return sameRqt;
+  } else {
+    curOpen = curOpen[0];
+  }
+
+  if (targ === curOpen) {
+    return !sameRqt;
+  } else {
+    curOpen.classList.toggle(openCls);
+    targ.classList.toggle(openCls);
+    return sameRqt;
+  }
 }
 
 /**
@@ -34,9 +55,15 @@ function setAttrs(ele, obj, silent = false) {
     throw new Error('2nd argument should be an object');
   }
   for (const [attr, val] of Object.entries(obj)) {
-    ele.setAttribute(attr, Array.isArray(val)
-      ? val.join(' ')
-      : val);
+    if (attr === 'class') {
+      if (Array.isArray(val)) {
+        ele.classList.add(...val);
+      } else {
+        ele.classList.add(val);
+      }
+    } else {
+      ele.setAttribute(attr, val);
+    }
   }
 }
 
@@ -119,22 +146,38 @@ function GenFetchInit(qrData, filData = null, getInfo = false, note = null) {
 
 class ParentE {
   /**
-   * https://jsfiddle.net/yLpkartg/
+   * https://jsfiddle.net/yc540mp6/
    * @param {Element|HTMLElement} ele
    * @param {Function} func should return Boolean
+   * @param {Boolean} incl should the last element be included when the func returns false
    */
-  constructor(ele, func) {
+  constructor(ele, func, incl = false, debg = false) {
     isEle(ele, '1st Arguement should be an element');
     if (typeof func !== 'function') {
       throw new Error('2nd Arguement should be an function');
     }
     this.ele = ele;
     this.func = func;
+    this.incl = incl;
+    this.isDone = false;
+    this.debug = debg;
   }
 
   next() {
+    if (this.debug) {
+      console.log(this.ele);
+      console.log(this.ele.parentElement);
+    }
     const parentEle = this.ele.parentElement;
-    const isNext = this.func(parentEle);
+    const curNext = this.incl && this.isDone
+      ? !this.isDone
+      : this.func(parentEle);
+    const isNext = this.incl && !this.isDone && !curNext
+      ? !curNext
+      : curNext;
+    this.isDone = this.incl && !curNext
+      ? !curNext
+      : this.isDone;
     if (isNext) {
       this.ele = parentEle;
       return { done: false, value: parentEle };
@@ -178,7 +221,7 @@ class QuestCont {
   #bodyWrpEle;
   /**
    *
-   * @param {Element|HTMLElement} obj
+   * @param {Element|HTMLElement|null} obj
    * @param {{str:String|[String]}} mainAtr main element attribute: use array for mulitple values
    * @param {{str:String|[String]}} headAtr header element attribute: use array for mulitple values
    * @param {{str:String|[String]}} bodyAtr body element attribute: use array for mulitple values
@@ -187,7 +230,7 @@ class QuestCont {
     let isCont = isEle(obj) && obj.classList.contains(QuestCont.#mainCls);
     this.#mainEle = isCont
       ? obj
-      : extdCreateEle(
+      : createEle(
         'div',
         null,
         QuestCont.#mainCls
@@ -198,12 +241,19 @@ class QuestCont {
       ? (headCol.length !== 0
           ? headCol[0]
           : null)
-      : extdCreateEle('div', null, QuestCont.#headCls);
+      : createEle('div', null, QuestCont.#headCls);
     this.#bodyEle = isCont
       ? (bodyCol.length !== 0
           ? bodyCol[0]
           : null)
-      : extdCreateEle('div', null, QuestCont.#bodyCls);
+      : createEle('div', null, QuestCont.#bodyCls);
+
+    if (!isCont) {
+      this.main.append(
+        this.header,
+        this.body
+      );
+    }
 
     const headWrpCol = isCont &&= obj.getElementsByClassName(QuestCont.#headWrpCls);
     const bodyWrpCol = isCont &&= obj.getElementsByClassName(QuestCont.#bodyWrpCls);
@@ -220,6 +270,9 @@ class QuestCont {
     if (bodyAtr) setAttrs(this.body, bodyAtr);
   }
 
+  /**
+   * @returns {Element}
+   */
   get main() {
     return this.#mainEle;
   }
@@ -244,6 +297,14 @@ class QuestCont {
     const main = this.main;
     if (main) main.remove();
     this.#mainEle = null;
+  }
+
+  /**
+   *
+   * @param {Node|Element|HTMLElement} ele
+   */
+  setHeader(ele) {
+    this.header.appendChild(ele);
   }
 
   /**
@@ -313,6 +374,7 @@ class InfoCont {
   /**
    *
    * @param {any|Element|HTMLElement} obj
+   * @returns {Element}
    */
   static #isInfo(obj) {
     return isEle(obj) && obj.classList.contains(InfoCont.#infoCls)
@@ -323,11 +385,185 @@ class InfoCont {
   /**
    *
    * @param {any|InfoCont} obj
+   * @returns {Element}
    */
   static #isInfoObj(obj) {
     return obj instanceof InfoCont
       ? obj.getInfo
       : null;
+  }
+
+  /**
+   *
+   * @param {{id:String, select:String}} identf use "id" for getElementById or "select" for querySelector
+   * @returns {undefined|boolean}
+   */
+  static isOpen(identf) {
+    const infoEle = isObj(identf)
+      ? ('id' in identf
+          ? document.getElementById(identf.id)
+          : document.querySelector(Object.values(identf)[0]))
+      : null;
+    if (!infoEle) return;
+    const isInfo = infoEle.classList.contains(InfoCont.#infoCls);
+    if (isInfo && !(infoEle.classList.contains(InfoCont.#closeCls))) return true;
+    let isOpen = true;
+    const infoPars = new ParentE(
+      infoEle,
+      ele => !(ele.classList.contains(InfoCont.#infoCls)),
+      true
+    );
+    for (const infoPar of infoPars) {
+      if (!(infoPar.classList.contains(InfoCont.#closeCls))) continue;
+      isOpen = false;
+      break;
+    }
+    return isOpen;
+  }
+
+  /**
+   * Refers only to headers
+   * @param {Element|HTMLElement} ele element that is an info container
+   * @param {String} cls class
+   * @returns {[Element]}
+   */
+  static getOpen(ele, cls = InfoCont.#headCls) {
+    const opened = [];
+    const infoEle = InfoCont.#isInfo(ele);
+    if (!infoEle || infoEle.classList.contains(InfoCont.#closeCls)) return opened;
+    const headers = infoEle.getElementsByClassName(cls);
+    if (headers.length === 0) return opened;
+    for (const header of headers) {
+      const headParents = new ParentE(
+        header,
+        ele => ele !== infoEle
+      );
+      let closedHead = false;
+      for (const headParent of headParents) {
+        if (headParent.classList.contains(InfoCont.#closeCls)) {
+          closedHead = true;
+          break;
+        }
+      }
+      if (!closedHead) opened.push(header);
+    }
+    return opened;
+  }
+
+  /**
+   *
+   * @param {[Element|HTMLElement]} dataEles Array-like of data elements (inside of "body" elements)
+   */
+  static updateInfos(dataEles) {
+    if (!('length' in dataEles) || dataEles.length === 0) return;
+    if (!Array.isArray(dataEles)) {
+      dataEles = Array.from(dataEles);
+    }
+
+    const subInfos = new Set();
+    for (const dataEle of dataEles) {
+      const dataPars = new ParentE(
+        dataEle,
+        ele => !!ele
+      );
+      for (const dataPar of dataPars) {
+        if (!(dataPar.classList.contains(InfoCont.#subCls))) continue;
+        subInfos.add(dataPar);
+        break;
+      }
+      dataEle.remove();
+    }
+
+    if (subInfos.size === 0) return;
+
+    function updateInfo(cont) {
+      let ifClose = true;
+      const isInfo = cont.classList.contains(InfoCont.#infoCls);
+      if (isInfo && cont.classList.contains(InfoCont.#closeCls)) return ifClose;
+      const contChs = Array.from(cont.children);
+      for (const contCh of contChs) {
+        const classL = contCh.classList;
+        if (classL.contains(InfoCont.#closeCls)) {
+          ifClose = ifClose && true;
+        } else if (classL.contains(InfoCont.#dataCls)) {
+          const dataBody = classL.contains(InfoCont.#bodyCls)
+            ? contCh
+            : contCh.getElementsByClassName(InfoCont.#bodyCls)[0];
+          if (dataBody && dataBody.firstElementChild) {
+            ifClose = ifClose && false;
+          } else {
+            contCh.remove();
+            ifClose = ifClose && true;
+          }
+        } else if (classL.contains(InfoCont.#subCls)) {
+          ifClose = ifClose && updateInfo(contCh);
+        } else {
+          ifClose = ifClose && true;
+        }
+      }
+      if (ifClose) {
+        cont.classList.add(InfoCont.#closeCls);
+      };
+      return ifClose;
+    }
+
+    const procdInfo = new Set();
+    for (const subInfo of subInfos) {
+      const bodyParents = new ParentE(
+        subInfo,
+        ele => !!ele
+      );
+      let infoCont;
+      for (const bodyP of bodyParents) {
+        if (!(bodyP.classList.contains(InfoCont.#infoCls))) continue;
+        infoCont = bodyP;
+        break;
+      }
+      if (!infoCont || procdInfo.has(infoCont)) continue;
+      updateInfo(infoCont);
+      procdInfo.add(infoCont);
+    }
+  }
+
+  /**
+   * if there is existing child element in subinfo, it will be remove automatically
+   * @param {{id:String, any:String}} identf if key is "id", getElementById method will be use otherise querySelector method will be use
+   * @param {Element|HTMLElement} dataCont data container
+   * @param {Element|HTMLElement} bodyCont the element where its children element are the data itself, this is needed so updateStat will work
+   * @param {Element|HTMLElement|InfoCont|null} infoEle
+   */
+  static insertData(identf, dataCont, bodyCont, infoEle = null) {
+    if (!(dataCont && bodyCont)) {
+      dataCont = bodyCont = dataCont || bodyCont;
+    }
+
+    if (!isObj(identf)) {
+      throw new Error('Identifier should an object');
+    }
+
+    infoEle = InfoCont.#isInfo(infoEle) || InfoCont.#isInfoObj(infoEle);
+
+    const subInfo = 'id' in identf
+      ? document.getElementById(identf.id)
+      : isEle(infoEle)
+        ? infoEle.querySelector(Object.values(identf)[0])
+        : null;
+    if (!subInfo) return;
+
+    if (subInfo.firstElementChild) removeData(subInfo);
+    dataCont.classList.add(InfoCont.#dataCls);
+    bodyCont.classList.add(InfoCont.#bodyCls);
+    subInfo.appendChild(dataCont);
+
+    subInfo.classList.remove(InfoCont.#closeCls);
+
+    const subParents = new ParentE(
+      subInfo,
+      ele => ele.classList.contains(InfoCont.#closeCls)
+    );
+    for (const subParent of subParents) {
+      subParent.classList.remove(InfoCont.#closeCls);
+    }
   }
 
   /**
@@ -338,7 +574,7 @@ class InfoCont {
   constructor(obj, ...subArgs) {
     this.#InfoEle = InfoCont.#isInfo(obj);
     if (!this.getInfo) {
-      this.#InfoEle = extdCreateEle('div', null, InfoCont.#infoCls);
+      this.#InfoEle = createEle('div', null, InfoCont.#infoCls);
       if (isObj(obj)) setAttrs(this.getInfo, obj, true);
     }
     let fClose = true;
@@ -350,13 +586,15 @@ class InfoCont {
           fClose = info.classList.contains(InfoCont.#closeCls);
           this.appendInfo(info, true);
         } else {
-          const subInfo = extdCreateEle('div', null, [InfoCont.#subCls, InfoCont.#closeCls]);
+          const subInfo = createEle('div', null, [InfoCont.#subCls, InfoCont.#closeCls]);
           if (isObj(subArg)) setAttrs(subInfo, subArg, true);
           this.getInfo.appendChild(subInfo);
         }
       }
     }
-    if (fClose) this.getInfo.classList.add(InfoCont.#closeCls);
+    if (fClose && !(this.getInfo.classList.contains(InfoCont.#closeCls))) {
+      this.getInfo.classList.add(InfoCont.#closeCls);
+    }
   }
 
   /**
@@ -385,7 +623,7 @@ class InfoCont {
    * @param {{str:String|[String]}} obj attributes for header element
    */
   addHeader(inner, obj) {
-    const headerEle = extdCreateEle('div', inner, InfoCont.#headCls);
+    const headerEle = createEle('div', inner, InfoCont.#headCls);
     if (isObj(obj)) setAttrs(headerEle, obj, true);
     this.getInfo.prepend(headerEle);
   }
@@ -397,92 +635,7 @@ class InfoCont {
    * @param {Element|HTMLElement} bodyCont the element where its children element are the data itself, this is needed so updateStat will work
    */
   insert(identf, dataCont, bodyCont) {
-    if (!(dataCont && bodyCont)) {
-      dataCont = bodyCont = document.createElement('div');
-    }
-
-    if (!isObj(identf)) {
-      throw new Error('Identifier should an object');
-    }
-
-    const subInfo = 'id' in identf
-      ? document.getElementById(identf.id)
-      : this.getInfo.querySelector(Object.values(identf)[0]);
-    if (!subInfo) return;
-
-    if (subInfo.firstElementChild) removeData(subInfo);
-    dataCont.classList.add(InfoCont.#dataCls);
-    bodyCont.classList.add(InfoCont.#bodyCls);
-    subInfo.appendChild(dataCont);
-
-    const subParents = new ParentE(
-      subInfo,
-      ele => !(ele.classList.contains(InfoCont.#infoCls))
-    );
-    for (const subParent of subParents) {
-      subParent.classList.remove(InfoCont.#closeCls);
-    }
-  }
-
-  /**
-   * @param {String} cls class
-   * @returns {[Element]}
-   */
-  getOpen(cls = InfoCont.#headCls) {
-    const opened = [];
-    const infoEle = this.getInfo;
-    if (infoEle.classList.contains(InfoCont.#closeCls)) return opened;
-    const headers = infoEle.getElementsByClassName(cls);
-    if (headers.length === 0) return opened;
-    for (const header of headers) {
-      const headParents = new ParentE(
-        header,
-        ele => ele !== infoEle
-      );
-      let closedHead = false;
-      for (const headParent of headParents) {
-        if (headParent.classList.contains(InfoCont.#closeCls)) {
-          closedHead = true;
-          break;
-        }
-      }
-      if (!closedHead) opened.push(header);
-    }
-    return opened;
-  }
-
-  /**
-   * add close status if no data
-   * @param {Element} cont
-   * @returns {Boolean}
-   */
-  updateInfo(cont = this.getInfo) {
-    const contChs = cont.children;
-    let ifClose = true;
-    for (let i = 0; i < contChs.length; i++) {
-      const contCh = contChs[i];
-      const classL = contCh.classList;
-      if (classL.contains(InfoCont.#dataCls)) {
-        const dataBody = classL.contains(InfoCont.#bodyCls)
-          ? contCh
-          : contCh.getElementsByClassName(InfoCont.#bodyCls)[0];
-        if (dataBody && dataBody.firstElementChild) {
-          ifClose = ifClose && false;
-        } else {
-          contCh.remove();
-          i--;
-          ifClose = ifClose && true;
-        }
-      } else if (classL.contains(InfoCont.#subCls)) {
-        ifClose = ifClose && this.updateInfo(contCh);
-      } else {
-        ifClose = ifClose && true;
-      }
-    }
-    if (ifClose && !(cont.classList.contains(InfoCont.#closeCls))) {
-      cont.classList.add(InfoCont.#closeCls);
-    };
-    return ifClose;
+    InfoCont.insertData(identf, dataCont, bodyCont, this.getInfo);
   }
 }
 
@@ -532,9 +685,9 @@ class Updater {
     }
     if (typeof contNm === 'string') {
       if (crtElePar.length > 0) {
-        bodyCont = extdCreateEle(contNm, ...crtElePar);
+        bodyCont = createEle(contNm, ...crtElePar);
       } else {
-        bodyCont = extdCreateEle(contNm);
+        bodyCont = createEle(contNm);
       }
     } else if (contNm.nodeType !== Node.ELEMENT_NODE) {
       console.trace();

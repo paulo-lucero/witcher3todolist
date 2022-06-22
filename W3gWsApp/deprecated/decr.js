@@ -58,9 +58,9 @@ class ContMngr {
     }
     if (typeof contNm === 'string') {
       if (crtElePar.length > 0) {
-        procCont = extdCreateEle(contNm, ...crtElePar);
+        procCont = createEle(contNm, ...crtElePar);
       } else {
-        procCont = extdCreateEle(contNm);
+        procCont = createEle(contNm);
       }
     } else if (contNm.nodeType !== Node.ELEMENT_NODE) {
       console.trace();

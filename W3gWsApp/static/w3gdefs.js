@@ -1,3 +1,11 @@
+/* global
+    InfoCont,
+    DataContxt,
+    questSectMenu,
+    inputLvlQuery,
+    retreiveCrucialData
+ */
+
 // const sTime = Date.now();
 const queryData = {
   isQueryActive: false,
@@ -20,14 +28,11 @@ const inputData = {
   arrowUp: document.querySelector('#input-arrowup'),
   arrowDown: document.querySelector('#input-arrowdown')
 };
-const pageQuestMenu = document.getElementById('qsect-menu');
-const pageQuestBody = document.getElementById('qsect-body');
-const infoQuestBody = document.getElementById('info-section');
 const noteConts = {
   w3: document.getElementById('w3g-body'),
   nBody: document.getElementById('qnotes-body'),
   nHeader: document.getElementById('qnotes-header'),
-  nMenus:  document.getElementById('qnotes-menus'),
+  nMenus: document.getElementById('qnotes-menus'),
   nData: document.getElementById('qnotes-data'),
   overlayOn: function(isOn) {
     this.nBody.style.display = isOn ? 'flex' : 'none';
@@ -49,58 +54,31 @@ const markData = {
   allBttn: document.getElementById('all-done'),
   doneDataCont: document.getElementById('done-data-cont'),
   showDone: function(isShow) {
-    let qnoteEles = [noteConts.nHeader.style, noteConts.nMenus.style, noteConts.nData.style];
+    const qnoteEles = [noteConts.nHeader.style, noteConts.nMenus.style, noteConts.nData.style];
     qnoteEles.forEach(qnoteEle => qnoteEle.setProperty('display', isShow ? 'none' : 'revert'));
     this.doneSect.style.setProperty('display', isShow ? 'revert' : 'none');
     if (!isShow) removeData(this.doneDataCont);
     this.doneMode = !isShow;
   },
   selectRefrh: function() {
-    let hasSelected = document.querySelector('[data-selected=\"true\"]') || !this.selectOn; // if select is on and has selected || if select is off -> need to revert
+    const hasSelected = document.querySelector('[data-selected="true"]') || !this.selectOn; // if select is on and has selected || if select is off -> need to revert
     this.selectBttn.style.setProperty('cursor', hasSelected ? 'revert' : 'not-allowed');
     return !!hasSelected;
   },
   selectOn: false,
   doneMode: true
 };
-const infoSect = {
-  regionId: null,
-  conBody: document.getElementById('confirm-body'),
-  opnCrl: document.getElementById('opened-crucial'),
-  bttnConf: document.getElementById('confirm-button'),
-  bttnCanl: document.getElementById('cancel-button'),
-  infoSubs: Array.from(document.getElementsByClassName('info-subsect')),
-  infoMenus: Array.from(document.getElementsByClassName('info-menu')),
-  cateIndx: {
-   1: [1, 'Main Quests'],
-   2: [3, 'Contract Quests'],
-   3: [2, 'Side Quests']
-  },
-  cateCls: 'info-note',
-  recentLvl: parseInt(inputData.inputEle.value, 10),
-  isCrucial: true,
-  cateConts: []
-};
-const menuNames = { //for easy code revision later
+const menuNames = { // for easy code revision later
   affName: 'Affected',
   misName: 'Missable',
-  enmName: 'Enemies',
-  genNoteName: function(notesArray) {
-    let noteEles = [];
-    for (let [noteKey, noteBool] of notesArray) {
-      if (noteBool) {
-      noteEles.push(extdCreateEle('span', this[noteKey]));
-      }
-    }
-    return noteEles;
-  }
+  enmName: 'Enemies'
 };
-const notesData = {};
 
-function allowEvt(mode=null) {
+function allowEvt(mode = null) {
   // additional/changes functionalities, only need to work on this function
-  let [isAllow, messg] = mode === 'allow-select' ? [!queryData.isQueryActive, 'Server is Busy']
-                       : [!queryData.isQueryActive && !markData.selectOn, 'Server is Busy OR in selection mode'];
+  const [isAllow, messg] = mode === 'allow-select'
+    ? [!queryData.isQueryActive, 'Server is Busy']
+    : [!queryData.isQueryActive && !markData.selectOn, 'Server is Busy OR in selection mode'];
 
   if (!isAllow) {
     console.log(messg);
@@ -109,13 +87,8 @@ function allowEvt(mode=null) {
   return isAllow;
 }
 
-function genEvtObj(evtFunc, evt) {
-  this.evtFunc = evtFunc,
-  this.evt = evt;
-}
-
 /**
- * 
+ *
  * @param {string} eleName
  * @param {string|Node[]|Node} inhtml
  * @param {string[]|string} eleCls
@@ -123,12 +96,12 @@ function genEvtObj(evtFunc, evt) {
  * @param {object} custAtr
  * @returns {Node|Element}
  */
-function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null, data=null) {
+function createEle(eleName, inhtml, eleCls = null, idName = null, custAtr = null, data = null) {
   // assign "inhtml" as null, if there is no innerHTML
-  let eleObj = document.createElement(eleName);
+  const eleObj = document.createElement(eleName);
   if (inhtml) {
     if (Array.isArray(inhtml)) {
-      inhtml.forEach(function(noteEle) {eleObj.appendChild(noteEle);});
+      inhtml.forEach(function(noteEle) { eleObj.appendChild(noteEle); });
     } else if (typeof inhtml === 'object') {
       eleObj.appendChild(inhtml);
     } else {
@@ -137,7 +110,7 @@ function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null, 
   }
   if (eleCls) {
     if (Array.isArray(eleCls)) {
-      eleCls.forEach(function(clsN) {eleObj.classList.add(clsN);});
+      eleCls.forEach(function(clsN) { eleObj.classList.add(clsN); });
     } else {
       eleObj.className = eleCls;
     }
@@ -157,43 +130,43 @@ function extdCreateEle(eleName, inhtml, eleCls=null, idName=null, custAtr=null, 
 }
 
 function createUrl(urlLink, urlName) {
-  let aTag = document.createElement('a');
+  const aTag = document.createElement('a');
   aTag.href = urlLink;
   aTag.innerHTML = urlName;
   aTag.target = '_blank';
   return aTag;
 }
 
-async function queryInfo(queryUrl, addtlData=null, noBlock=false) {
+async function queryInfo(queryUrl, addtlData = null, noBlock = false) {
   if (!noBlock ? queryData.disableQuery(true) : true) {
-    let fetchData = {cache: 'no-cache'};
+    const fetchData = { cache: 'no-cache' };
     if (addtlData && typeof addtlData === 'object') {
-      for (let addtlkey in addtlData) {
+      for (const addtlkey in addtlData) {
         fetchData[addtlkey] = addtlData[addtlkey];
       }
     }
     // console.log(`Fetch Begins Elapsed Time ${Date.now()-sTime}`);
-    let getInfo = await fetch(queryUrl, fetchData);
+    const getInfo = await fetch(queryUrl, fetchData);
     // console.log(`Fetch Done Elapsed Time ${Date.now()-sTime}`);
-    if(!getInfo.ok) {
-      if(!noBlock) {
+    if (!getInfo.ok) {
+      if (!noBlock) {
         queryData.disableQuery(false);
       }
-      if(queryData.isQueryActive) {
+      if (queryData.isQueryActive) {
         queryData.disableQuery(false, true);
       }
       throw new Error(`HTTP error! status: ${getInfo.status}`);
     } else {
-      jsoniedInfo = await getInfo.json();
+      const jsoniedInfo = await getInfo.json();
       if (jsoniedInfo && typeof jsoniedInfo === 'object' && 'error' in jsoniedInfo) {
-        let errBody = 'code' in jsoniedInfo ? jsoniedInfo.code : jsoniedInfo.stringnified;
+        const errBody = 'code' in jsoniedInfo ? jsoniedInfo.code : jsoniedInfo.stringnified;
         throw new Error(`${jsoniedInfo.error}! status:\n ${errBody}`);
       }
       console.log(jsoniedInfo);
-      if(!noBlock) {
+      if (!noBlock) {
         queryData.disableQuery(false);
       }
-      if(queryData.isQueryActive) {
+      if (queryData.isQueryActive) {
         queryData.disableQuery(false, true);
       }
       return jsoniedInfo;
@@ -201,62 +174,30 @@ async function queryInfo(queryUrl, addtlData=null, noBlock=false) {
   }
 }
 
-function genNotesData(queryFunc, noteClass, noteHeaders, noteItems, menuClass=null) {
-    this.queryUrl = queryFunc,
-    this.menuClass = menuClass,
-    this.noteClass = noteClass, //orders is important
-    this.noteHeaders = noteHeaders, //orders is important
-    this.noteItems = noteItems; //orders is important
+function GenNotesData(queryFunc, noteClass, noteHeaders, noteItems, menuClass = null) {
+  this.queryUrl = queryFunc;
+  this.menuClass = menuClass;
+  this.noteClass = noteClass; // orders is important
+  this.noteHeaders = noteHeaders; // orders is important
+  this.noteItems = noteItems; // orders is important
 }
 
-notesData[menuNames.misName] = new genNotesData(
-  function(dataId) {return `/query/mis-id-${dataId}`;},
-  'qwt-note',
-  [
-    ['qwtheader-name', 'Players'],
-    ['qwtheader-location', 'Location'],
-    ['qwtheader-notes', 'Notes']
-  ],
-  [
-    [
-      'qwtitem-name',
-      ['p_url', 'p_name']
-    ],
-    ['qwtitem-location', 'p_location'],
-    ['qwtitem-notes', 'qwent_notes']
-  ],
-  menuClass='qwt-menu'
-);
-notesData[menuNames.enmName] = new genNotesData(
-  function(dataId) {return `/query/enm-id-${dataId}`;},
-  'enm-note',
-  [
-    ['enmheader-name', 'Enemies Name'],
-    ['enmheader-notes', 'Notes']
-  ],
-  [
-    [
-      'enmitem-name',
-      ['enemy_url', 'enemy_name']
-    ],
-    ['enmitem-notes', 'enemy_notes']
-  ],
-  menuClass='enm-menu'
-);
-
-function genNoteHeader(containerEle, headerEleName, headersDef=null) {
-  let defaultData = [
+function genNoteHeader(containerEle, headerEleName, headersDef = null) {
+  const defaultData = [
     ['headers-questname', 'Quest Name'],
     ['headers-questlvl', 'Level'],
     ['headers-affected', 'Affected'],
     ['headers-notes', 'Notes'],
     ['headers-regquest', 'Reqion Quests']
   ];
-  let headersData = Array.isArray(headersDef) && headersDef.every(headerData => Array.isArray(headerData)) ? headersDef
-                  : typeof headersDef === 'number' ? defaultData.slice(0, headersDef)
-                  : defaultData;
-  for (let [hClass, hName] of headersData) {// header
-    let noteSpan = document.createElement(headerEleName);
+  const headersData = Array.isArray(headersDef) &&
+  headersDef.every(headerData => Array.isArray(headerData))
+    ? headersDef
+    : typeof headersDef === 'number'
+      ? defaultData.slice(0, headersDef)
+      : defaultData;
+  for (const [hClass, hName] of headersData) { // header
+    const noteSpan = document.createElement(headerEleName);
     noteSpan.className = hClass;
     noteSpan.innerHTML = hName;
     containerEle.appendChild(noteSpan);
@@ -271,19 +212,19 @@ function removeData(noteData) {
   } else {
     noteInfos = noteData;
   }
-  for (let noteInfo of noteInfos) {
-    while(noteInfo.firstChild) {
+  for (const noteInfo of noteInfos) {
+    while (noteInfo.firstChild) {
       noteInfo.removeChild(noteInfo.firstChild);
     }
   }
 }
 
-function closeNotes(noteContainer, noteClassEle, menuContainer=null) {
+function closeNotes(noteContainer, noteClassEle, menuContainer = null) {
   // can use closeNotes to call remove childnodes, just need to pass the noteContainer in an Array
   // when overlay show, noteContainer still dont have any child and menuContainer have childnodes(its length is <= 1)
   // does the value should be null to avoid returning true
-  let isSameNote = !!noteClassEle; // if same note return true
-  if(menuContainer && ((typeof menuContainer === 'object' && menuContainer.children.length === 1) || isSameNote)) {
+  const isSameNote = !!noteClassEle; // if same note return true
+  if (menuContainer && ((typeof menuContainer === 'object' && menuContainer.children.length === 1) || isSameNote)) {
     // if single note/menu or same note found, don't allowed to close it
     return true;
   }
@@ -297,12 +238,12 @@ function closeNotes(noteContainer, noteClassEle, menuContainer=null) {
   return isSameNote;
 }
 
-function retreiveNull(mesg=null) {
-  let mesgNull = mesg ? mesg : 'No Data Available';
-  return extdCreateEle('div', mesgNull, eleCls='retr-null');
+function retreiveNull(mesg = null) {
+  const mesgNull = mesg || 'No Data Available';
+  return createEle('div', mesgNull, 'retr-null');
 }
 
-function stylng(elmt, prty=null, getp=true) {// Window.getComputedStyle() is read-only
+function stylng(elmt, prty = null, getp = true) { // Window.getComputedStyle() is read-only
   if (prty && getp === false) {
     elmt.style.removeProperty(prty);
   } else if (getp !== true) {
@@ -311,15 +252,15 @@ function stylng(elmt, prty=null, getp=true) {// Window.getComputedStyle() is rea
   return elmt.style.getPropertyValue(prty) ? elmt.style.getPropertyValue(prty) : window.getComputedStyle(elmt).getPropertyValue(prty);
 }
 
-function undsplyEle(bodyConts, preBool=null) {
-  for (let bodyCont of bodyConts) {
-    let isDplyNone = stylng(bodyCont, 'display') === 'none';
-    let isHasNotes = preBool !== null ? preBool : bodyCont.hasChildNodes();
+function undsplyEle(bodyConts, preBool = null) {
+  for (const bodyCont of bodyConts) {
+    const isDplyNone = stylng(bodyCont, 'display') === 'none';
+    const isHasNotes = preBool !== null ? preBool : bodyCont.hasChildNodes();
     if (isDplyNone && isHasNotes) {
       stylng(bodyCont, 'display', 'revert');
-    } else if (!isDplyNone && !isHasNotes) { //if "else" is use, the bodyCont will be none if the condition = isDplyNone is False while isHasNotes is True
+    } else if (!isDplyNone && !isHasNotes) { // if "else" is use, the bodyCont will be none if the condition = isDplyNone is False while isHasNotes is True
       stylng(bodyCont, 'display', 'none');
-      //possible results - false:
+      // possible results - false:
       // true && false = unset && with childs - ok
       // false && true = none && w/o childs - ok
       // false && false = none && with child - ok
@@ -360,7 +301,7 @@ function hasQuests(ele) {
 
 function firstChildQuest(ele) {
   // substitute: firstChild, firstElementChild, hasChildNodes, children
-  let firstCh = Array.from(ele.children).find(chEle => 'info' in chEle.dataset);
+  const firstCh = Array.from(ele.children).find(chEle => 'info' in chEle.dataset);
   return firstCh !== undefined ? firstCh : null;
 }
 
@@ -374,51 +315,158 @@ function getQuest(cont, patt) {
   return arrCont.find(chEle => 'info' in chEle.dataset && chEle.dataset.info.search(patt) !== -1);
 }
 
-for (let infoSub of infoSect.infoSubs) {
-  for (let order = 1; order <= Object.keys(infoSect.cateIndx).length; order++) {
-    let infoIsFirst = infoQuestBody.firstElementChild === infoSub;
-    let infoIsLast = infoQuestBody.lastElementChild === infoSub;
-    let cateCont = extdCreateEle('div', null, eleCls='info-body');
-    cateCont.appendChild(extdCreateEle('div', null, eleCls=infoSect.cateCls));
-    infoSub.appendChild(cateCont);
-    if (infoIsFirst || infoIsLast) {
-      if (infoIsLast) {
-        infoSect.infoRegion = cateCont.firstElementChild;
-      }
-      break;
-    } else {
-      cateCont.insertBefore(extdCreateEle('div', infoSect.cateIndx[order][1]), cateCont.firstElementChild);
+// [Setup of Left Section Pane]
+class CgLSect {
+  /**
+   * @type {InfoCont}
+   */
+  static infoObj = null;
+  static menuCls = 'lsect-menu';
+  static mainId = 'lsect-menu-main';
+  static secId = 'lsect-menu-sec';
+  static questCls = 'lsect-reg-info-quests';
+}
+
+async function createLSect() {
+  const questSect = document.getElementById('quests-section');
+  const lSectIdf = new DataContxt(null, 'lsect').createId('body');
+  CgLSect.infoObj = new InfoCont(
+    { id: 'lsect-cont' },
+    { id: lSectIdf.getId }
+  );
+  const lSectMenu = createEle(
+    'div',
+    [
+      createEle(
+        'span',
+        'Main Quests',
+        CgLSect.menuCls,
+        CgLSect.mainId
+      ),
+      createEle(
+        'span',
+        'Secondary Quests',
+        CgLSect.menuCls,
+        CgLSect.secId
+      )
+    ],
+    null,
+    'lsect-menu-cont',
+    lSectIdf.getRef
+  );
+  lSectMenu.addEventListener('click', questSectMenu);
+  CgLSect.infoObj.addHeader(lSectMenu);
+  questSect.appendChild(CgLSect.infoObj.getInfo);
+
+  const questsStatus = await queryInfo('/query/check-quests-info');
+
+  const lSectEvt = {
+    currentTarget: document.getElementById('lsect-menu-cont'),
+    target: questsStatus.main_count
+      ? document.getElementById(CgLSect.mainId)
+      : questsStatus.second_count
+        ? document.getElementById(CgLSect.secId)
+        : document.getElementById(CgLSect.mainId)
+  };
+
+  await questSectMenu(lSectEvt);
+
+  return true;
+}
+// [Setup of Right Section Pane]
+
+class CgRightSect {
+  static info = document.getElementById('info-section');
+  /**
+   * @type {InfoCont}
+   */
+  static infoObj = null;
+  static order(type, i = 0) {
+    const byCateId = {
+      1: [0, ['Main Quests', 'mq']],
+      2: [2, ['Side Quests', 'sq']],
+      3: [1, ['Contract Quests', 'cq']]
+    };
+    return byCateId[type][i];
+  }
+
+  static crucData = [
+    ['High Risk', 'hr'],
+    ['Low-Risk', 'lr'],
+    ['Overleveled', 'ol']
+  ];
+
+  static cateData = [
+    this.order(1, 1),
+    this.order(2, 1),
+    this.order(3, 1)
+  ];
+
+  static refs = [];
+  static recentLvl = parseInt(inputData.inputEle.value, 10);
+  static questCls = 'rsect-info-quests';
+}
+
+async function createRightInfo() {
+  const rinfoContxt = new DataContxt(null, 'rsect');
+  const nullContId = 'info-null-cont'; // null querried data
+  const rInfoEle = new InfoCont(
+    { id: 'info-sect-cont' },
+    { id: nullContId }
+  );
+
+  CgRightSect.refs.push(nullContId);
+
+  const crucContxt = new DataContxt(rinfoContxt, 'cruc');
+  // scavenger quest
+  const scContxt = new DataContxt(crucContxt, 'sca');
+  const scIdf = scContxt.createId('scv');
+  const scInfo = new InfoCont(null, { id: scIdf.getId });
+  scInfo.addHeader(createEle('div', 'Scavenger Quests'));
+  rInfoEle.appendInfo(scInfo);
+  CgRightSect.refs.push(scIdf.getId);
+  //
+
+  // crucial
+  for (const [crucName, crucCon] of CgRightSect.crucData) {
+    const cateContxt = new DataContxt(crucContxt, crucCon);
+    const cateInfos = [];
+    const cateIds = [];
+    for (const [cateName, idf] of CgRightSect.cateData) {
+      const cateIdf = cateContxt.createId(idf);
+      const cateInfo = new InfoCont(null, { id: cateIdf.getId });
+      cateInfo.addHeader(
+        createEle('div', cateName)
+      );
+      cateInfos.push(cateInfo);
+      cateIds.push(cateIdf.getId);
     }
-  }
-}
-{
-  let newCateIndx = {};
-  Object.keys(infoSect.cateIndx).forEach(function(order) {
-    newCateIndx[infoSect.cateIndx[order][0]] = order - 1;
-  });
-  infoSect.cateIndx = newCateIndx;
-}
 
-infoSect.infoSubs.forEach(infoSub => infoSect.cateConts.push(Array.from(infoSub.getElementsByClassName(infoSect.cateCls))));
+    const crucInfo = new InfoCont(null, ...cateInfos);
+    crucInfo.addHeader(createEle('div', crucName));
+    rInfoEle.appendInfo(crucInfo);
+    CgRightSect.refs.push(cateIds);
+  }
+  //
 
-infoSect.infoRefresh = function(rmvData=false, isCrucial=null) {
-  this.isCrucial = typeof isCrucial === 'boolean' ? isCrucial : this.isCrucial;
-  let isNote = false;
-  let rmvFunc = cateCont => removeData(cateCont);
-  let chkChFunc = cateBody => hasQuests(cateBody);
-  let refrhNote = cateBody => undsplyEle([cateBody.parentElement], hasQuests(cateBody));
-  if (rmvData) {
-    this.cateConts.forEach(rmvFunc);
-    // contsM.closeCont(infoQuestBody, false);
-  } else {
-    // contsM.openCont(infoQuestBody, true, this.isCrucial ? {level:this.recentLvl} : {region:this.regionId, second:null}, 'rightsect');
-  }
-  for (let idx = 0; idx < this.cateConts.length; idx++) {
-    let subNoteBool = this.cateConts[idx].some(chkChFunc);
-    this.cateConts[idx].forEach(refrhNote);
-    undsplyEle([infoSect.infoSubs[idx]], subNoteBool);
-    isNote = subNoteBool ? subNoteBool : isNote; // once true, the value wont change even if all next is false
-  }
-  return isNote;
-};
-// if (infoSect.cateConts.length === 5) console.log(`Info Bodies Creation Elapsed Time ${Date.now()-sTime}`);
+  // region based side-quest querying
+  const regContxt = new DataContxt(rinfoContxt, 'reg');
+  const regIdf = regContxt.createId('scq');
+  const regInfo = new InfoCont(null, { id: regIdf.getId });
+  rInfoEle.appendInfo(regInfo);
+  CgRightSect.refs.push(regIdf.getId);
+  //
+
+  CgRightSect.info.append(rInfoEle.getInfo);
+
+  CgRightSect.infoObj = rInfoEle;
+
+  inputData.inputEle.addEventListener('keyup', inputLvlQuery);
+  inputData.arrowUp.addEventListener('click', inputLvlQuery);
+  inputData.arrowDown.addEventListener('click', inputLvlQuery);
+
+  await retreiveCrucialData(CgRightSect.recentLvl);
+
+  return true;
+}
+//

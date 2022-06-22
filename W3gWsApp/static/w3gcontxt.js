@@ -9,6 +9,16 @@ class IdRef {
     return !!document.getElementById(idstr);
   }
 
+  /**
+   *
+   * @param {Element} ele
+   * @returns {String|undefined}
+   */
+  static getIdRef(ele) {
+    if (!('idFor' in ele.dataset)) return;
+    return ele.dataset.idFor;
+  }
+
   static getTarg(recEle) {
     if (!('idFor' in recEle.dataset)) {
       throw new Error('Receiver Element doesn\'t has "id-for" reference');
@@ -107,7 +117,7 @@ class IdRef {
   }
 }
 
-class InfoContxt {
+class DataContxt {
   #septr = '-';
   #idSymb = '#';
 
@@ -119,26 +129,41 @@ class InfoContxt {
     }
   }
 
-  static getContxt(ele, pMode = 'id', silent = false) {
+  /**
+   *
+   * @param {Element|DataContxt|String|null} obj if string it should be in an id format
+   * @param {String} pMode
+   * @param {boolean} silent
+   */
+  static getContxt(obj, pMode = 'id', silent = false) {
     // pMode = using keyname for otr-for, use string with "-" on beginning or string thats not a "id" or "for"
-    isEle(ele, 'The receiver is not an element');
-    const refType = pMode === 'id'
-      ? ele.id
-      : pMode === 'for'
-        ? ele.dataset.idFor
-        : IdRef.getOtrFor(ele)[pMode.replace('-', '')];
+    if (obj === null) return '';
+    const isContxt = obj instanceof DataContxt;
+    const refType = isContxt
+      ? obj.newContxt
+      : typeof obj === 'string'
+        ? obj
+        : isEle(obj)
+          ? (pMode === 'id'
+              ? obj.id
+              : pMode === 'for'
+                ? obj.dataset.idFor
+                : IdRef.getOtrFor(obj)[pMode.replace('-', '')])
+          : null;
     if (!refType && !silent) {
       throw new Error('No ID or ID reference found on the element');
     }
-    return refType ? refType.match(/.*(?=-#)/)[0] : '';
+    return refType
+      ? refType.replace(/-#.+/, '')
+      : '';
   }
 
   constructor(ele, ccont = '') {
     if (!(ccont.trim())) {
       throw new Error('Current Context can\'t be an empty or whitespace or newline');
     }
-    InfoContxt.#charValidt(ccont);
-    const lcont = InfoContxt.getContxt(ele, 'for', true);
+    DataContxt.#charValidt(ccont);
+    const lcont = DataContxt.getContxt(ele, 'for', true);
     const arrContxt = [ccont];
     if (lcont) arrContxt.unshift(lcont);
     this.newContxt = arrContxt.join(this.#septr);
@@ -155,7 +180,7 @@ class InfoContxt {
     if (!(idF.trim())) {
       throw new Error('ID can\'t be an empty or whitespace or newline');
     }
-    InfoContxt.#charValidt(idF, addtl);
+    DataContxt.#charValidt(idF, addtl);
     let genID = this.newContxt + this.#septr + this.#idSymb + idF;
     genID = addtl.trim() ? genID + this.#septr + addtl : genID;
     return new IdRef(genID);
