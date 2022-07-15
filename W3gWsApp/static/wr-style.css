@@ -3,40 +3,28 @@ body {
   background-color: #EEEEEE;
 }
 
-#qnotes-body, #confirm-body {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 2;
-}
-
-#qdone-data {
-  display: none;
-}
-
-#qnotes-overlay {
-  width: 75vw;
-  height: 75vh;
-  background-color: #f8f8ff;
-}
-
-#confirm-overlay {
-  width: 30vw;
-  height: 30vh;
-  background-color: #f8f8ff;
-}
-
 #w3g-body {
   padding: 8px;
 }
 
 #quest-query {
+  display: flex;
+  justify-content: space-between;
   position: relative;
   margin-bottom: .3vw;
+}
+
+#quest-query-left > * {
+  margin: 0 1vw;
+}
+
+.hide-button {
+  display: none;
+}
+
+.button:hover {
+  cursor: pointer;
+  font-weight: 600;
 }
 
 #quest-query input {
@@ -218,20 +206,6 @@ body.in-query * {
   cursor: wait !important;
 }
 
-#quest-query .select-mode {
-  position: absolute;
-  right: 19vw;
-  display: inline-block;
-  width: 7vw;
-}
-
-#quest-query .cancel-mode {
-  position: absolute;
-  right: 11vw;
-  display: none;
-  width: 7vw;
-}
-
 #done-display {
   position: absolute;
   right: 0px;
@@ -281,6 +255,71 @@ body.in-query * {
 
 .cont-status-close {
   display: none;
+}
+
+:root {
+  --heading-px: 21px;
+}
+
+.quest-container .marker {
+  display: inline-block;
+  max-width: var(--heading-px);
+}
+
+.affected-note {
+  padding-left: 1.5em;
+}
+
+.quest-header {
+  padding-left: var(--heading-px);
+}
+
+/* Multi Marker */
+.mult-reg.info-marker {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 21px;
+  text-align: center;
+}
+
+.mult-reg.info-marker:hover {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* overlay */
+
+.show-overlay-backg {
+  filter: blur(5px);
+}
+
+.show-overlay-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+.overlay-notes {
+  width: 75vw;
+  height: 75vh;
+  background-color: #f8f8ff;
+}
+
+.overlay-confirm {
+  width: 30vw;
+  height: 30vh;
+  background-color: #f8f8ff;
+}
+
+#overlay-finished {
+  width: 35vw;
+  height: 80vh;
+  background-color: #f8f8ff;
 }
 
 /* .cutoff-quest span, .cutoff-quest span a:link, .cutoff-quest span a:visited {

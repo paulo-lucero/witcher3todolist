@@ -6,54 +6,31 @@
     <title>Witcher 3 Level Based Guide</title>
   </head>
   <body>
-    <div id="qnotes-body">
-      <div id="qnotes-overlay">
-        <h2 id="qnotes-header"></h2>
-        <div id="qnotes-menus"></div>
-        <div id="qnotes-data"></div>
-        <div id="qdone-data">
-          <div id="qdone-bttns">
-            <button id="undone-all" type="button">Mark as "undone" all quests</button>
-            <span class="select-mode">Select Quest</span>
-            <span class="cancel-mode">Cancel Selection</span>
-          </div>
-          <div id="done-quests">
-            <div id="done-menu">
-              <span id="recent-done">Recently</span>
-              <span id="all-done">All</span>
-            </div>
-            <div id="done-data-cont"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div id="confirm-body">
-      <div id="confirm-overlay">
-        <div id="warning-crucial">Crucial Quests Tab Opened: </div>
-        <div id="opened-crucial"></div>
-        <div id="buttons-data">
-          <button id="confirm-button">Confirm</button>
-          <button id="cancel-button">Cancel</button>
-        </div>
-      </div>
-    </div>
+    <div id="w3g-overlay" ></div>
     <div id="w3g-body">
       <div id="quest-query">
-        <input type="text" value="Search quest here....">
-        <span id="level-query">
-          <input type="text" title="Insert Level here..." value="1">
-          <span id="input-arrowup" ></span>
-          <span id="input-arrowdown" ></span>
-        </span>
-        <span class="select-mode">Select Quest</span>
-        <span class="cancel-mode">Cancel Selection</span>
-        <span id="done-display">Show Done Quests</span>
+        <div id="quest-query-right">
+          <input type="text" value="Search quest here....">
+          <span id="level-query">
+            <input type="text" title="Insert Level here..." value="1">
+            <span id="input-arrowup" ></span>
+            <span id="input-arrowdown" ></span>
+          </span>
+        </div>
+        <div id="quest-query-left">
+          <span class="left-buttons">
+            <span class="select button">Select</span>
+            <span class="mark button hide-button">Mark</span>
+          </span>
+          <span class="right-buttons">
+            <span class="finished button">Finished</span>
+            <span class="cancel button hide-button">Cancel</span>
+          </span>
+        </div>
       </div>
       <div id="page-section">
-        <div id="quests-section">
-        </div>
-        <div id="info-section">
-        </div>
+        <div id="quests-section"></div>
+        <div id="info-section"></div>
       </div>
     </div>
     {% for jsf in jsfs %}

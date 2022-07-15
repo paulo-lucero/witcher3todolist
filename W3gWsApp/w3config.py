@@ -20,3 +20,6 @@ def db_setup():
 
 class DefConfig():
     DATABASE = db_setup()
+
+class DevConfig(DefConfig):
+    DB_DEBUG = os.path.join(os.path.dirname(__file__), 'w3debug.db')

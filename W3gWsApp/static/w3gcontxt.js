@@ -1,5 +1,5 @@
 /* global
-    isEle
+    isEle,
 */
 
 class IdRef {
@@ -73,8 +73,8 @@ class IdRef {
     return idData.length > 1 ? { main: idData[0], addtl: idData[1] } : { main: idData[0] };
   }
 
-  constructor(genID) {
-    if (IdRef.#checkID(genID)) {
+  constructor(genID, force = false) {
+    if (!force && IdRef.#checkID(genID)) {
       throw new Error(`This generated ID ${genID} is already existed`);
     }
     this.#eleID = genID;

@@ -1,4 +1,4 @@
-import flask
+import imp
 import click
 from flask import Blueprint, jsonify
 from flask import request
@@ -125,17 +125,18 @@ def quest_done():
     json_data = request.get_json(cache=False) 
     quest_data = json_data['questData'] #format : [{'regionId': int, 'questId': int}, ...]
     fils_basis = json_data['filter']
-    quest_aff = None
-    count_summ = None
+    quest_aff = {}
     modif_count = 0
     err_r = None
     sql_cmd = None
 
     if json_data['done'] or json_data['redo']:
-        modif_type = ('do' if json_data['done'] else 'redo')
         # insert quest_id and region_id in a temporary db, that have status changed
         # Need to store the quest_id and region_id in a temp db, because I can't query by set of quest_id and region_id
         no_of_changes = w3gdbhandl.create_tempdb(cur_db, quest_data, json_data['redo'])
+        '''Logging'''
+        w3gdbhandl.debugdb_copy_changes(conn_db)
+        trxn_c = w3gdbhandl.gen_trxnid()
 
         # done or redo
         cur_db.execute(f'''
@@ -150,43 +151,33 @@ def quest_done():
             raise ValueError(f'Total Count Attempt Modification is {modif_count}, While the Total Count Requested Modification is {no_of_changes}')
 
         # query of affected quests
-        if fils_basis:
-            fil_cmd = w3gdbhandl.gen_query_cmd(
-                          'chall',
-                          select=['all_quests.cutoff', 'all_quests.category_id'],
-                          where=w3gdbhandl.gen_filter(fils_basis)
-                      )
-            try:
-                cur_db.execute(fil_cmd)
-                result_query = cur_db.fetchall()
-                if len(result_query) > 0:
-                    quest_aff = result_query
-                # raise ValueError('Test Error - Execution Success')
-                # sql_cmd = fil_cmd # for debug
-            except:
-                err_r = traceback.format_exc()
-                sql_cmd = fil_cmd
+        for fil_type in fils_basis:
+            fil_basis = fils_basis[fil_type]
+            if fil_basis:
+                fil_cmd = None
+                try:
+                    fil_cmd = w3gdbhandl.gen_query_cmd(
+                                'mall' if fil_type == 'info' else 'chall',
+                                select=['all_quests.cutoff', 'all_quests.category_id', 'all_quests.undone_count AS quest_count'],
+                                where=w3gdbhandl.gen_filter(fil_basis, fil_type),
+                                af_wh='GROUP BY all_quests.id' if fil_type == 'info' else None
+                            )
+                    cur_db.execute(fil_cmd)
+                    result_query = cur_db.fetchall()
+                    quest_aff[fil_type] = result_query if len(result_query) > 0 else None
+                    '''Logging'''
+                    w3gdbhandl.debugdb_logfil(conn_db, trxn_c, fil_type, fil_basis, fil_cmd)
+                except:
+                    err_r = traceback.format_exc()
+                    sql_cmd = fil_cmd
 
-        # query of count data
-        cur_db.execute(f'''
-            SELECT 'REGION' AS count_type, region.id AS count_id, region.side_count AS count_num
-            FROM region WHERE region.id != 1 
-            UNION ALL
-            SELECT 'CUTOFF', all_quests.id, all_quests.aff_count FROM all_quests
-            WHERE 
-            all_quests.id IN (
-                SELECT DISTINCT all_quests.cutoff 
-                FROM changes_quest INNER JOIN all_quests ON all_quests.id = changes_quest.quest_id
-                WHERE all_quests.cutoff >= 0
-            ) 
-            AND all_quests.aff_count >= 0''')
-        result_query = cur_db.fetchall()
-        if len(result_query) > 0:
-            count_summ = result_query
+        # separate query of count region and secondary quest
+        #  may add filter basis for count?, "data-count-filt"
+        #  query only based on changes_quest region_id
 
     elif json_data['query']:
         query_info = json_data['query']
-        addlt_wh = f" AND {query_info['recent']} - quest_region.date_change <= 86400000" if 'recent' in query_info else ''
+        addlt_wh = f" AND {query_info} - quest_region.date_change <= 86400000" if isinstance(query_info, int) else '' # this could scan whole table, it will need to check every date_change
         cur_db.execute(
             w3gdbhandl.gen_query_cmd(
                 'mregion',
@@ -203,5 +194,8 @@ def quest_done():
 
     if modif_count > 0:
         conn_db.commit()
-
-    return jsonify(result=quest_aff, count=count_summ, modified=modif_count, err_r=err_r, sql_cmd=sql_cmd)
+        # from .w3revertdb import revert_db
+        # from flask import current_app
+        # revert_db(conn_db, current_app.logger)
+    
+    return jsonify(result=quest_aff, modified=modif_count, err_r=err_r, sql_cmd=sql_cmd)

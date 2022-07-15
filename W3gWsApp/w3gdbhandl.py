@@ -15,15 +15,21 @@ def conn_w3gdb():
     if 'w3gdb' not in g:
         g.w3gdb = sqlite3.connect(current_app.config['DATABASE'])
         g.w3gdb.row_factory = sqlite3.Row
-    click.echo(click.style('Database Connected', fg='bright_blue'))
+        click.echo(click.style('Main Database Connected', fg='bright_blue'))
     return g.w3gdb
 
 def close_w3gdb(e=None):
     # click.echo('Closing Database: Checked')
-    w3gdb = g.pop('w3gdb', None)
-    if w3gdb is not None:
-        w3gdb.close()
-        click.echo(click.style('Database Closed', fg='bright_green'))
+    dbs = [
+        ['w3gdb', 'Main'], 
+        ['w3debug', 'Debug']
+    ]
+    
+    for db_key, msg in dbs:
+        w3gdb = g.pop(db_key, None)
+        if w3gdb is not None:
+            w3gdb.close()
+            click.echo(click.style(f'{msg} Database Closed', fg='bright_green'))
 
 def create_tempdb(db_cur, id_qr, is_redo):
     db_cur.execute('''  
@@ -48,6 +54,56 @@ def create_tempdb(db_cur, id_qr, is_redo):
             db_cur.executemany('INSERT INTO changes_quest (quest_id, region_id, date_change) VALUES (:questId, :regionId, :doneDate)', id_qr)
     return db_cur.rowcount
 
+
+def conn_debugdb():
+    if 'w3debug' not in g:
+        g.w3debug = sqlite3.connect(current_app.config['DB_DEBUG'])
+        g.w3debug.row_factory = sqlite3.Row
+        click.echo(click.style('Debug Database Connected', fg='bright_blue'))
+    return g.w3debug
+
+def debugdb_copy_changes(con_main):
+    cur_main = con_main.cursor()
+    debug_path = current_app.config['DB_DEBUG']
+    conn_debugdb()
+    try:
+        cur_main.execute(f"ATTACH DATABASE '{debug_path}' AS debugdb")
+    except:
+        pass
+    cur_main.execute('DROP TABLE IF EXISTS debugdb.changes_quest')
+    cur_main.execute('CREATE TABLE debugdb.changes_quest AS SELECT * FROM temp.changes_quest')
+    con_main.commit()
+    return cur_main
+
+def gen_trxnid():
+    con_debug = conn_debugdb()
+    cur_debug = con_debug.cursor()
+    try:
+        cur_debug.execute('SELECT MAX(fil_log.fil_trxn) AS trxn FROM fil_log')
+        last_trxn = cur_debug.fetchone()['trxn']
+        trxn_count = last_trxn + 1 if last_trxn else 1
+    except:
+        trxn_count = 1
+    return trxn_count
+    
+def debugdb_logfil(con_main, trxn_c, fil_t, fil_b, sql_c):
+    cur_main = con_main.cursor()
+    debug_path = current_app.config['DB_DEBUG']
+    conn_debugdb()
+    try:
+        cur_main.execute(f"ATTACH DATABASE '{debug_path}' AS debugdb")
+    except:
+        pass
+    cur_main.execute('''CREATE TABLE IF NOT EXISTS debugdb.fil_log (
+        fil_trxn INTEGER,
+        fil_type TEXT,
+        fil_basis TEXT,
+        sql_cmd TEXT
+    );''')
+    fil_log = (trxn_c, fil_t, json.dumps(fil_b, indent=2), sql_c)
+    cur_main.execute('INSERT INTO debugdb.fil_log (fil_trxn, fil_type, fil_basis, sql_cmd) VALUES (?, ?, ?, ?)', fil_log)
+    con_main.commit()
+    return cur_main
 
 @click.command('init-db')
 @with_appcontext
@@ -207,17 +263,31 @@ def gen_query_cmd(styl='all', **comb):
 
     return re.sub('\s{2,}', ' ', sql_cmd.replace('\n', ' '))
 
-def gen_filter(fils):
-    val_def = {
-        'main': 'all_quests.category_id = 1',
-        'second': 'all_quests.category_id != 1',
-        'category': 'all_quests.category_id =?',
-        'region': 'changes_quest.region_id =?',
-        'level': 'all_quests.req_level <=?',
-        'cutoff': 'all_quests.cutoff =?',
-        'quest': 'changes_quest.quest_id =?'
+def gen_filter(fils, mode='done'):
+    val_defs = {
+        'info': {
+            'undone': 'all_quests.undone_count > 1 AND quest_region.status_id = 1',
+            'done': 'all_quests.undone_count = 1 AND quest_region.status_id = 1',
+            'cutoff': '''all_quests.id IN ( 
+                SELECT allq.cutoff FROM changes_quest INNER JOIN all_quests AS allq ON allq.id = changes_quest.quest_id WHERE allq.cutoff =? 
+            )''',
+            'quest': 'all_quests.id =?',
+            'region': 'changes_quest.region_id =?',
+            'second': 'all_quests.category_id != 1'
+        },
+        'cont': {
+            'main': 'all_quests.category_id = 1',
+            'second': 'all_quests.category_id != 1',
+            'category': 'all_quests.category_id =?',
+            'region': 'changes_quest.region_id =?',
+            'level': 'all_quests.req_level <=?',
+            'cutoff': 'all_quests.cutoff =?',
+            'quest': 'changes_quest.quest_id =?',
+            'cruc': '(all_quests.req_level <= (? - 2 ) OR (all_quests.category_id = 4 AND all_quests.req_level <=?))'
+        }
     }
-    whr = f"(?)"
+
+    val_def = val_defs[mode]
     fils_whr = []
     septr = ' AND '
 
@@ -237,4 +307,4 @@ def gen_filter(fils):
         else:
             raise ValueError('no filter type found')
 
-    return whr.replace('(?)' if len(fils_whr) == 1 else '?', ' OR '.join(fils_whr))
+    return ' OR '.join(fils_whr)

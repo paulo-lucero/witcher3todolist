@@ -2,12 +2,12 @@
     createEle,
     parsedEle,
     getAllQuests,
-    getQuest,
     isEle,
-    markData,
     removeData,
     isEles,
-    DataContxt
+    parsedAll,
+    queryInfo,
+    EleData
 */
 
 function isObj(obj) {
@@ -51,7 +51,7 @@ function isSameRqt(evt) {
  */
 function setAttrs(ele, obj, silent = false) {
   isEle(ele, '1st argument should be an element');
-  if (!silent && isObj(obj)) {
+  if (!silent && !isObj(obj)) {
     throw new Error('2nd argument should be an object');
   }
   for (const [attr, val] of Object.entries(obj)) {
@@ -67,13 +67,35 @@ function setAttrs(ele, obj, silent = false) {
   }
 }
 
+/**
+ *
+ * @param {Element|HTMLElement} ele
+ * @param {{String:[String]|null}} obj use array for multiple values, e.g. classes
+ */
+function rmvAttrs(ele, obj, silent = false) {
+  isEle(ele, '1st argument should be an element');
+  if (!silent && !isObj(obj)) {
+    throw new Error('2nd argument should be an object');
+  }
+  for (const [attr, val] of Object.entries(obj)) {
+    if (attr === 'class') {
+      if (Array.isArray(val)) {
+        ele.classList.remove(...val);
+      } else {
+        ele.classList.remove(val);
+      }
+    } else {
+      ele.removeAttribute(attr);
+    }
+  }
+}
+
 // test: https://jsfiddle.net/q5ufvc32/
-function insertData(qData, contEle, sortBasis, ascS = true, nodupl = true) {
+function insertData(qData, contEle, sortBasis, ascS = true) {
   isEle(contEle, 'This Container must be an element');
   isEle(qData, 'Quest data must be an element');
 
   const qParsed = parsedEle(qData);
-  // check for same id for multi region quests
 
   const qISort = qParsed[sortBasis];
   if (qISort === undefined) {
@@ -81,9 +103,6 @@ function insertData(qData, contEle, sortBasis, ascS = true, nodupl = true) {
   }
   const allqData = getAllQuests(contEle);
   const dLength = allqData.length;
-
-  const sameIdQ = getQuest(allqData, new RegExp(`^${qParsed.questId}#`));
-  if (sameIdQ && nodupl) return;
 
   function linSrchR(arrData, cIdx) {
     const nIdx = cIdx + 1;
@@ -127,7 +146,7 @@ function insertData(qData, contEle, sortBasis, ascS = true, nodupl = true) {
   contEle.insertBefore(qData, dLength < 4 ? linSrchR(allqData, 0) : binSrchR(allqData, dLength - 1, 0, null));
 }
 
-function GenFetchInit(qrData, filData = null, getInfo = false, note = null) {
+function GenFetchInit(qrData, infoFil = null, contFil = null, getInfo = false, note = null) {
   this.method = 'PATCH';
   this.headers = {
     'Content-Type': 'application/json'
@@ -135,9 +154,12 @@ function GenFetchInit(qrData, filData = null, getInfo = false, note = null) {
   this.body = JSON.stringify(
     {
       questData: qrData,
-      filter: filData,
-      done: !(getInfo || note) ? markData.doneMode : null,
-      redo: !(getInfo || note) ? !markData.doneMode : null,
+      filter: {
+        info: infoFil,
+        cont: contFil
+      },
+      done: !(getInfo || note) ? Updater.isDone : null,
+      redo: !(getInfo || note) ? !Updater.isDone : null,
       query: getInfo,
       note
     }
@@ -191,12 +213,43 @@ class ParentE {
   }
 }
 
+/**
+ *
+ * @param {Element|HTMLElement} ele
+ * @param {*} identf
+ */
+function getParent(ele, identf) {
+  if (!isObj(identf)) {
+    throw new Error('Identifier should be an object');
+  }
+  const eleParents = new ParentE(
+    ele,
+    elet => !!elet
+  );
+
+  let curEle;
+  function checkAttr(attr) {
+    if (attr === 'class') {
+      return curEle.classList.contains(identf[attr]);
+    }
+    return curEle.getAttribute(attr) === identf[attr];
+  }
+
+  const attrs = Object.keys(identf);
+  for (const eleParent of eleParents) {
+    curEle = eleParent;
+    if (attrs.every(checkAttr)) return curEle;
+  }
+}
+
 class QuestCont {
   static #mainCls = 'quest-cont-main';
   static #headCls = 'quest-cont-head';
   static #bodyCls = 'quest-cont-body';
+  static #footCls = 'quest-cont-foot';
   static #headWrpCls = 'quest-wrap-head';
   static #bodyWrpCls = 'quest-wrap-body';
+  static #footWrpCls = 'quest-wrap-foot';
   static #wrapper(ele, wrpCls, refThis, refWrp) {
     if (!isEle(ele)) return;
     const wrpEle = this[refWrp];
@@ -217,16 +270,19 @@ class QuestCont {
   #mainEle;
   #headerEle;
   #bodyEle;
+  #footEle;
   #headWrpEle;
   #bodyWrpEle;
+  #footWrpEle;
   /**
-   *
+   * Container that doesn't need to persist
    * @param {Element|HTMLElement|null} obj
    * @param {{str:String|[String]}} mainAtr main element attribute: use array for mulitple values
    * @param {{str:String|[String]}} headAtr header element attribute: use array for mulitple values
    * @param {{str:String|[String]}} bodyAtr body element attribute: use array for mulitple values
+   * @param {{str:String|[String]}} footAtr footer element attribute: use array for mulitple values
    */
-  constructor(obj, mainAtr, headAtr, bodyAtr) {
+  constructor(obj, mainAtr, headAtr, bodyAtr, footAtr) {
     let isCont = isEle(obj) && obj.classList.contains(QuestCont.#mainCls);
     this.#mainEle = isCont
       ? obj
@@ -237,6 +293,7 @@ class QuestCont {
       );
     const headCol = isCont &&= obj.getElementsByClassName(QuestCont.#headCls);
     const bodyCol = isCont &&= obj.getElementsByClassName(QuestCont.#bodyCls);
+    const footCol = isCont &&= obj.getElementsByClassName(QuestCont.#footCls);
     this.#headerEle = isCont
       ? (headCol.length !== 0
           ? headCol[0]
@@ -247,27 +304,41 @@ class QuestCont {
           ? bodyCol[0]
           : null)
       : createEle('div', null, QuestCont.#bodyCls);
+    this.#footEle = isCont
+      ? (footCol.length !== 0
+          ? footCol[0]
+          : null)
+      : createEle('div', null, QuestCont.#footCls);
 
     if (!isCont) {
       this.main.append(
         this.header,
-        this.body
+        this.body,
+        this.foot
       );
     }
 
     const headWrpCol = isCont &&= obj.getElementsByClassName(QuestCont.#headWrpCls);
     const bodyWrpCol = isCont &&= obj.getElementsByClassName(QuestCont.#bodyWrpCls);
+    const footWrpCol = isCont &&= obj.getElementsByClassName(QuestCont.#footWrpCls);
     this.#headWrpEle = headWrpCol && headWrpCol.length !== 0
       ? headWrpCol[0]
       : null;
     this.#bodyWrpEle = bodyWrpCol && bodyWrpCol.length !== 0
       ? bodyWrpCol[0]
       : null;
+    this.#footWrpEle = footWrpCol && footWrpCol.length !== 0
+      ? footWrpCol[0]
+      : null;
 
-    isEles([this.header, 'Header Container'], [this.body, 'Body Container']);
-    if (mainAtr) setAttrs(this.main, mainAtr);
-    if (headAtr) setAttrs(this.header, headAtr);
-    if (bodyAtr) setAttrs(this.body, bodyAtr);
+    isEles(
+      [this.header, 'Header Container'],
+      [this.body, 'Body Container'],
+      [this.foot, 'Footer Container']);
+    if (isObj(mainAtr)) setAttrs(this.main, mainAtr, true);
+    if (isObj(headAtr)) setAttrs(this.header, headAtr, true);
+    if (isObj(bodyAtr)) setAttrs(this.body, bodyAtr, true);
+    if (isObj(footAtr)) setAttrs(this.foot, footAtr, true);
   }
 
   /**
@@ -285,12 +356,20 @@ class QuestCont {
     return this.#bodyEle;
   }
 
+  get foot() {
+    return this.#footEle;
+  }
+
   get headWrp() {
     return this.#headWrpEle;
   }
 
   get bodyWrp() {
     return this.#bodyWrpEle;
+  }
+
+  get footWrp() {
+    return this.#footWrpEle;
   }
 
   close() {
@@ -313,6 +392,10 @@ class QuestCont {
    */
   insert(data) {
     this.body.appendChild(data);
+  }
+
+  setFooter(ele) {
+    this.foot.appendChild(ele);
   }
 
   /**
@@ -350,6 +433,15 @@ class QuestCont {
       QuestCont.#bodyWrpCls,
       'body',
       'bodyWrp'
+    );
+  }
+
+  wrapFoot(ele) {
+    QuestCont.#wrapper(
+      ele,
+      QuestCont.#footWrpCls,
+      'foot',
+      'footWrp'
     );
   }
 }
@@ -393,8 +485,39 @@ class InfoCont {
       : null;
   }
 
+  static #updateInfo(cont) {
+    let ifClose = true;
+    const isInfo = cont.classList.contains(InfoCont.#infoCls);
+    if (isInfo && cont.classList.contains(InfoCont.#closeCls)) return ifClose;
+    const contChs = Array.from(cont.children);
+    for (const contCh of contChs) {
+      const classL = contCh.classList;
+      if (classL.contains(InfoCont.#closeCls)) {
+        ifClose = ifClose && true;
+      } else if (classL.contains(InfoCont.#dataCls)) {
+        const dataBody = classL.contains(InfoCont.#bodyCls)
+          ? contCh
+          : contCh.getElementsByClassName(InfoCont.#bodyCls)[0];
+        if (dataBody && dataBody.firstElementChild) {
+          ifClose = ifClose && false;
+        } else {
+          contCh.remove();
+          ifClose = ifClose && true;
+        }
+      } else if (classL.contains(InfoCont.#subCls)) {
+        ifClose = InfoCont.#updateInfo(contCh) && ifClose; // can't do `ifClose && updateInfo(contCh)`; if "ifClose" is false, updateInfo wont execute
+      } else {
+        ifClose = ifClose && true;
+      }
+    }
+    if (ifClose) {
+      cont.classList.add(InfoCont.#closeCls);
+    };
+    return ifClose;
+  }
+
   /**
-   *
+   * Container that needed to persist
    * @param {{id:String, select:String}} identf use "id" for getElementById or "select" for querySelector
    * @returns {undefined|boolean}
    */
@@ -406,7 +529,8 @@ class InfoCont {
       : null;
     if (!infoEle) return;
     const isInfo = infoEle.classList.contains(InfoCont.#infoCls);
-    if (isInfo && !(infoEle.classList.contains(InfoCont.#closeCls))) return true;
+    if (isInfo && !(infoEle.classList.contains(InfoCont.#closeCls))) return true; // info
+    if (infoEle.classList.contains(InfoCont.#closeCls)) return false; // subinfo
     let isOpen = true;
     const infoPars = new ParentE(
       infoEle,
@@ -430,7 +554,7 @@ class InfoCont {
   static getOpen(ele, cls = InfoCont.#headCls) {
     const opened = [];
     const infoEle = InfoCont.#isInfo(ele);
-    if (!infoEle || infoEle.classList.contains(InfoCont.#closeCls)) return opened;
+    if (infoEle && infoEle.classList.contains(InfoCont.#closeCls)) return opened;
     const headers = infoEle.getElementsByClassName(cls);
     if (headers.length === 0) return opened;
     for (const header of headers) {
@@ -453,8 +577,9 @@ class InfoCont {
   /**
    *
    * @param {[Element|HTMLElement]} dataEles Array-like of data elements (inside of "body" elements)
+   * @param {{add:{attr:String|[String]},rmv:{attr:null|[String]}}} identf for setting and removing attributes of a direct parent subinfo only
    */
-  static updateInfos(dataEles) {
+  static removeData(dataEles, identf) {
     if (!('length' in dataEles) || dataEles.length === 0) return;
     if (!Array.isArray(dataEles)) {
       dataEles = Array.from(dataEles);
@@ -469,43 +594,16 @@ class InfoCont {
       for (const dataPar of dataPars) {
         if (!(dataPar.classList.contains(InfoCont.#subCls))) continue;
         subInfos.add(dataPar);
+        if (isObj(identf)) {
+          if ('add' in identf) setAttrs(dataPar, identf.add);
+          if ('rmv' in identf) rmvAttrs(dataPar, identf.rmv);
+        }
         break;
       }
       dataEle.remove();
     }
 
     if (subInfos.size === 0) return;
-
-    function updateInfo(cont) {
-      let ifClose = true;
-      const isInfo = cont.classList.contains(InfoCont.#infoCls);
-      if (isInfo && cont.classList.contains(InfoCont.#closeCls)) return ifClose;
-      const contChs = Array.from(cont.children);
-      for (const contCh of contChs) {
-        const classL = contCh.classList;
-        if (classL.contains(InfoCont.#closeCls)) {
-          ifClose = ifClose && true;
-        } else if (classL.contains(InfoCont.#dataCls)) {
-          const dataBody = classL.contains(InfoCont.#bodyCls)
-            ? contCh
-            : contCh.getElementsByClassName(InfoCont.#bodyCls)[0];
-          if (dataBody && dataBody.firstElementChild) {
-            ifClose = ifClose && false;
-          } else {
-            contCh.remove();
-            ifClose = ifClose && true;
-          }
-        } else if (classL.contains(InfoCont.#subCls)) {
-          ifClose = ifClose && updateInfo(contCh);
-        } else {
-          ifClose = ifClose && true;
-        }
-      }
-      if (ifClose) {
-        cont.classList.add(InfoCont.#closeCls);
-      };
-      return ifClose;
-    }
 
     const procdInfo = new Set();
     for (const subInfo of subInfos) {
@@ -520,19 +618,19 @@ class InfoCont {
         break;
       }
       if (!infoCont || procdInfo.has(infoCont)) continue;
-      updateInfo(infoCont);
+      InfoCont.#updateInfo(infoCont);
       procdInfo.add(infoCont);
     }
   }
 
   /**
    * if there is existing child element in subinfo, it will be remove automatically
-   * @param {{id:String, any:String}} identf if key is "id", getElementById method will be use otherise querySelector method will be use
+   * @param {{id:String,select:String,add:{attr:String|[String]},rmv:{attr:null|[String]}}} identf if key is "id", getElementById method will be use otherise querySelector method will be use
    * @param {Element|HTMLElement} dataCont data container
    * @param {Element|HTMLElement} bodyCont the element where its children element are the data itself, this is needed so updateStat will work
    * @param {Element|HTMLElement|InfoCont|null} infoEle
    */
-  static insertData(identf, dataCont, bodyCont, infoEle = null) {
+  static insertData(identf, dataCont, bodyCont, infoEle = null, logMode = false) {
     if (!(dataCont && bodyCont)) {
       dataCont = bodyCont = dataCont || bodyCont;
     }
@@ -545,10 +643,15 @@ class InfoCont {
 
     const subInfo = 'id' in identf
       ? document.getElementById(identf.id)
-      : isEle(infoEle)
-        ? infoEle.querySelector(Object.values(identf)[0])
+      : isEle(infoEle) && 'select' in identf
+        ? infoEle.querySelector(identf.select)
         : null;
+
+    if (logMode) console.log(document.getElementById(identf.id));
     if (!subInfo) return;
+
+    if ('add' in identf) setAttrs(subInfo, identf.add);
+    if ('rmv' in identf) rmvAttrs(subInfo, identf.rmv);
 
     if (subInfo.firstElementChild) removeData(subInfo);
     dataCont.classList.add(InfoCont.#dataCls);
@@ -564,6 +667,42 @@ class InfoCont {
     for (const subParent of subParents) {
       subParent.classList.remove(InfoCont.#closeCls);
     }
+  }
+
+  /**
+   *
+   * @param {{id:String,select:String}} identf identifier for sub info
+   * @param {InfoCont|Element|HTMLElement|{id:String,select:String}} infoCont
+   */
+  static closeSubInfo(identf, infoCont) {
+    if (!isObj(identf)) {
+      throw new Error('Identifier should be an object');
+    }
+    if (!isObj(infoCont)) {
+      throw new Error('Info Container should be an object');
+    }
+    const infoEle = InfoCont.#isInfo(infoCont) ||
+      InfoCont.#isInfoObj(infoCont) || (!isEle(infoCont) &&
+      'id' in infoCont
+      ? document.getElementById(infoCont.id)
+      : 'select' in infoCont
+        ? document.querySelector(infoCont.select)
+        : null);
+    if (!infoEle || !infoEle.classList.contains(InfoCont.#infoCls)) return;
+
+    const subInfo = 'id' in identf
+      ? document.getElementById(identf.id)
+      : 'select' in identf
+        ? infoEle.querySelector(identf.select)
+        : null;
+
+    if (!subInfo || !subInfo.classList.contains(InfoCont.#subCls)) return;
+
+    if (subInfo.firstElementChild === null) return;
+
+    removeData(subInfo);
+
+    InfoCont.#updateInfo(infoEle);
   }
 
   /**
@@ -604,6 +743,12 @@ class InfoCont {
     return this.#InfoEle;
   }
 
+  addSub(attrs) {
+    const subInfo = createEle('div', null, [InfoCont.#subCls, InfoCont.#closeCls]);
+    if (isObj(attrs)) setAttrs(subInfo, attrs, true);
+    this.getInfo.appendChild(subInfo);
+  }
+
   /**
    *
    * @param {InfoCont|Element|HTMLElement} obj
@@ -634,69 +779,252 @@ class InfoCont {
    * @param {Element|HTMLElement} dataCont data container
    * @param {Element|HTMLElement} bodyCont the element where its children element are the data itself, this is needed so updateStat will work
    */
-  insert(identf, dataCont, bodyCont) {
-    InfoCont.insertData(identf, dataCont, bodyCont, this.getInfo);
+  insert(identf, dataCont, bodyCont, logMode = false) {
+    InfoCont.insertData(identf, dataCont, bodyCont, this.getInfo, logMode);
+  }
+
+  /**
+   *
+   * @param {String} cls class name of the of the container
+   */
+  getOpenAll(cls = InfoCont.#headCls) {
+    return InfoCont.getOpen(this.getInfo, cls);
+  }
+
+  /**
+   *
+   * @param {{id:String,select:String}} identf identifier for sub info
+   */
+  closeSub(identf) {
+    InfoCont.closeSubInfo(identf, this.getInfo);
   }
 }
 
 class Updater {
+  static isDone = true;
+  static selectOn = false;
+  static removeCls = 'info-selected-remove';
+  static #beforeFuncs = new Set();
+  static #infoUpdater = new Set();
+  static #contUpdater = new Set();
+  static #contFiltSpec = {
+    main: null,
+    second: null,
+    category: [1, 2, 3, 4],
+    region: [1, 2, 3, 4, 5, 6, 7],
+    level: 'number',
+    cruc: 'number',
+    cutoff: 'number',
+    quest: 'number'
+  };
+
+  static #infoFiltSpec = {
+    undone: null,
+    done: null,
+    cutoff: 'number',
+    quest: 'number',
+    region: [1, 2, 3, 4, 5, 6, 7],
+    second: null
+  };
+
   /**
    *
-   * @param {string|Node|Element|HTMLElement} contNm element object or element tag name for creation
-   * @param {Object} filData key: filter | value: filter value
-   * @param  {...any} crtElePar parameters for creating container note body if it a string
-   * @returns {Element}
+   * @param {{str:String|Number|null}} filData
+   * @param {{str:String|Number|null|[Number]}} filSpec
+   * @returns {[[String, String|null|Number]]}
    */
-  static #open(contNm, filData, ...crtElePar) {
-    // test: https://jsfiddle.net/avm9d62s/2/
-    if (typeof filData !== 'object') {
-      throw new Error('fiter data should be an object or null');
+  static #filtValidt(filData, filSpec) {
+    const entFilData = Object.entries(filData);
+    for (let idx = 0; idx < entFilData.length; idx++) {
+      const filT = entFilData[idx][0];
+      const filV = entFilData[idx][1];
+      if (!(filT in filSpec)) {
+        throw new Error(`This filter type ${filT} is not valid`);
+      }
+      if (filSpec[filT] === null && filV !== null) {
+        throw new Error(`This ${filT} filter value should be null, not ${filV}`);
+      } else if (Array.isArray(filSpec[filT]) && !(filSpec[filT].includes(filV))) {
+        throw new Error(`The value ${filV} of this ${filT} filter is not valid`);
+      } else if (filSpec[filT] === 'number' && typeof filV !== 'number') {
+        throw new Error(`The value ${filV} of this ${filT} filter should be a Number`);
+      }
+      if (filV === null) {
+        entFilData[idx][1] = 'null';
+      }
     }
-    const filSpec = {
-      main: null,
-      second: null,
-      category: [1, 2, 3, 4],
-      region: [1, 2, 3, 4, 5, 6, 7],
-      level: 'number',
-      cutoff: 'number',
-      quest: 'number'
-    };
-    let bodyCont = null;
-    let entFilData = null;
-    if (filData !== null) {
-      entFilData = Object.entries(filData);
-      for (let idx = 0; idx < entFilData.length; idx++) {
-        const filT = entFilData[idx][0];
-        const filV = entFilData[idx][1];
-        if (!(filT in filSpec)) {
-          throw new Error(`This filter type ${filT} is not valid`);
-        }
-        if (filSpec[filT] === null && filV !== null) {
-          throw new Error(`This ${filT} filter value should be null, not ${filV}`);
-        } else if (Array.isArray(filSpec[filT]) && !(filSpec[filT].includes(filV))) {
-          throw new Error(`The value ${filV} of this ${filT} filter is not valid`);
-        } else if (filSpec[filT] === 'number' && typeof filV !== 'number') {
-          throw new Error(`The value ${filV} of this ${filT} filter should be a Number`);
-        }
-        if (filV === null) {
-          entFilData[idx][1] = 'null';
+    return entFilData;
+  }
+
+  /**
+   *
+   * @param {[Object]} filts
+   */
+  static #consoFilt(filts) {
+    const filTypes = new Map();
+
+    for (const filt of filts) {
+      const strType = Object.keys(filt).join('-');
+      if (!(filTypes.has(strType))) {
+        filTypes.set(strType, Object.assign({}, filt));
+        continue;
+      }
+      const cFilt = filTypes.get(strType);
+      for (const [filtT, filtV] of Object.entries(filt)) {
+        const cFiltV = cFilt[filtT];
+        const isArrCV = Array.isArray(cFiltV);
+        if (isArrCV && !(cFiltV.includes(filtV))) {
+          cFiltV.push(filtV);
+        } else if (!isArrCV && cFiltV !== filtV) {
+          cFilt[filtT] = [cFiltV, filtV];
         }
       }
     }
-    if (typeof contNm === 'string') {
-      if (crtElePar.length > 0) {
-        bodyCont = createEle(contNm, ...crtElePar);
-      } else {
-        bodyCont = createEle(contNm);
-      }
-    } else if (contNm.nodeType !== Node.ELEMENT_NODE) {
-      console.trace();
-      throw new Error('The container is not an Element');
+    return Array.from(filTypes.values());
+  }
+
+  /**
+   * filter basis for container type elements
+   * @param {Element|HTMLElement|null} ele Element
+   * @param {{str:String|Number|null}} filData key: filter | value: filter value
+   */
+  static genContFilt(ele, filData) {
+    if (!isObj(filData)) return;
+    const filtEntries = Updater.#filtValidt(
+      filData,
+      Updater.#contFiltSpec
+    );
+    const filt = (filtEntries !== null)
+      ? filtEntries.map(filD => filD.join(':')).join('-')
+      : '';
+    if (isEle(ele)) {
+      ele.dataset.contfilt = filt;
     } else {
-      bodyCont = contNm;
+      return {
+        'data-contfilt': filt
+      };
     }
-    bodyCont.dataset.fil = (entFilData !== null) ? entFilData.map(filD => filD.join(':')).join('-') : '';
-    bodyCont.dataset.conttype = 'body';
-    return bodyCont;
+  }
+
+  /**
+   * filter basis for quest info elements, for updating quest data
+   * @param {Element|HTMLElement} ele Element
+   * @param {{str:String|Number|null}} filData key: filter | value: filter value
+   */
+  static genInfoFilt(ele, filData) {
+    isEle(ele, 'Container should be an element');
+    if (!isObj(filData)) return;
+    const filtEntries = Updater.#filtValidt(
+      filData,
+      Updater.#infoFiltSpec
+    );
+    ele.dataset.infofilt = (filtEntries !== null)
+      ? filtEntries.map(filD => filD.join(':')).join('-')
+      : '';
+  }
+
+  static addBeforeFunc(func) {
+    if (typeof func !== 'function') return;
+    Updater.#beforeFuncs.add(func);
+  }
+
+  /**
+   *
+   * @param {Function} func
+   */
+  static addInfoUpdater(func) {
+    if (typeof func !== 'function') return;
+    Updater.#infoUpdater.add(func);
+  }
+
+  /**
+   * NOTES:
+   *  - No duplicates except for multi containers
+   *  - Force multi info if needed (turn "1" on data-info region part if multi)
+   * @param {Function} func
+   */
+  static addContUpdater(func) {
+    if (typeof func !== 'function') return;
+    Updater.#contUpdater.add(func);
+  }
+
+  static async update(addtl) {
+    Updater.#beforeFuncs.forEach(
+      func => func(addtl)
+    );
+    // const logMode = true;
+    // if (logMode) return;
+
+    const infoEles = new EleData('[data-infofilt]');
+    const contEles = new EleData('[data-contfilt]');
+
+    const infoFilt = Updater.#consoFilt(infoEles.parsed);
+    const contFilt = !(Updater.isDone)
+      ? Updater.#consoFilt(contEles.parsed)
+      : null;
+
+    const selectedInfo = document.getElementsByClassName('quest-container info-selected');
+    const parsedInfos = parsedAll(selectedInfo, 'level');
+    if (Updater.isDone) {
+      const doneDate = Date.now();
+      parsedInfos.forEach(info => {
+        info.doneDate = doneDate;
+      });
+    }
+
+    const updResult = await queryInfo(
+      '/query/request-modif',
+      new GenFetchInit(
+        parsedInfos,
+        infoFilt,
+        contFilt)
+    );
+
+    if (updResult.err_r) {
+      throw new Error(
+        'Error in filter querying',
+        {
+          cause: {
+            trace: updResult.err_r,
+            sql: updResult.sql_cmd
+          }
+        });
+    } else if (updResult.modified !== parsedInfos.length) {
+      throw new Error(
+        'Number of modified row and selected info aren\'t equal',
+        {
+          cause: {
+            selected: selectedInfo,
+            results: updResult.result
+          }
+        }
+      );
+    }
+    console.warn('This is experimental phase, no changes commited; \nQuery result is: \n%o\nLogging is ON', updResult);
+
+    InfoCont.removeData(selectedInfo);
+    InfoCont.removeData(
+      document.getElementsByClassName(Updater.removeCls)
+    );
+
+    const resultInfo = updResult.result.info;
+    const resultCont = updResult.result.cont;
+    const updaterFuncs = [
+      [
+        resultInfo
+          ? Updater.#infoUpdater
+          : null,
+        { parsed: infoEles, result: resultInfo, addtl }
+      ],
+      [
+        resultCont
+          ? Updater.#contUpdater
+          : null,
+        { parsed: contEles, result: resultCont, addtl }
+      ]
+    ];
+    for (const [updrs, resultData] of updaterFuncs) {
+      if (updrs === null) continue;
+      updrs.forEach(updr => updr(resultData));
+    }
   }
 }

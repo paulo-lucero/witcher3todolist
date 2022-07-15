@@ -9,7 +9,9 @@
   showDataConfirm,
   InfoCont,
   QuestCont,
-  isObj
+  CgRightSect,
+  Updater,
+  DataContxt
  */
 
 function GenNoteIdentf(qw, em, nt) {
@@ -58,23 +60,53 @@ const noteObj = {
 };
 
 function menuClass(questInfo, cls = 'notes-data') {
-  return [questInfo.cut ? 'cutoff-quest' : 'normal-quest', cls];
+  const defCls = [questInfo.cut ? 'cutoff-quest' : 'normal-quest'];
+  return defCls.concat(cls);
 }
 
 function genNullNote(questInfo) {
   return createEle('span', 'n/a', menuClass(questInfo, 'qnotes-none'));
 }
 
+/**
+ *
+ * @param {Element|HTMLElement} menuCont element containing class "menu-cont"
+ * @param {Element|HTMLElement} excl to be excluded
+ */
+function toggleQuestType(menuCont, excl) {
+  const menus = menuCont.querySelectorAll(
+    '.cutoff-quest, .normal-quest'
+  );
+
+  menus.forEach(
+    menuEle => {
+      if (excl === menuEle) return;
+      menuEle.classList.toggle('cutoff-quest');
+      menuEle.classList.toggle('normal-quest');
+    }
+  );
+}
+
 // quest data generation blueprints
-function genMenuMarker(questInfo, evtRef) {
-  const isMulti = 'quest_count' in questInfo && questInfo.quest_count > 1;
+function genMenuMarker(questInfo, evtRef, nonMulti = null) {
+  const isMulti = (nonMulti === null || !nonMulti) &&
+    'quest_count' in questInfo &&
+    questInfo.quest_count > 1;
   const custAtr = Object.assign(
     isMulti ? evtRef.getRef : evtRef.getOtrRef(null, 'multi'),
-    isMulti ? { 'data-id': questInfo.id } : { type: 'checkbox' }
+    { 'data-id': questInfo.id },
+    { 'data-qcount': 'quest_count' in questInfo ? questInfo.quest_count : 'n/a' }
   );
+  if (!isMulti) Object.assign(custAtr, { type: 'checkbox' });
   const menuMarker = isMulti
-    ? createEle('span', '+', 'mult-reg', null, custAtr)
-    : createEle('input', null, 'quest-marker', null, custAtr);
+    ? createEle(
+      'span',
+      document.createTextNode(questInfo.quest_count),
+      menuClass(questInfo, ['mult-reg', 'info-marker']),
+      null,
+      custAtr
+    )
+    : createEle('input', null, ['quest-marker', 'info-marker'], null, custAtr);
   if (isMulti) menuMarker.addEventListener('click', showMultiQuest);
   return menuMarker;
 }
@@ -105,13 +137,14 @@ function genMenuLvl(questInfo) {
 function genMenuCut(questInfo, evtRef) {
   const custAtr = Object.assign(
     evtRef.getRef,
-    { 'data-id': questInfo.id }
+    { 'data-id': questInfo.id },
+    { 'data-cutcount': questInfo.cut !== null ? questInfo.cut : 'n/a' }
   );
   let menuCut;
   if (questInfo.cut !== null && questInfo.cut >= 0) {
     const innerMenu = createEle(
       'span',
-      questInfo.cut,
+      document.createTextNode(questInfo.cut),
       null,
       null,
       custAtr);
@@ -153,10 +186,18 @@ function genMenuNote(questInfo) {
       { 'data-id': questInfo.id });
     menuNote.addEventListener(
       'click',
-      showNotesOverlay.bind([
-        createUrl(questInfo.quest_url, questInfo.quest_name),
-        document.createTextNode(questInfo.req_level ? questInfo.req_level : 'n/a')
-      ]));
+      showNotesOverlay.bind(
+        createEle(
+          'h2',
+          [
+            createUrl(questInfo.quest_url, questInfo.quest_name),
+            createEle(
+              'span',
+              document.createTextNode(questInfo.req_level ? questInfo.req_level : 'n/a')
+            )
+          ]
+        )
+      ));
   } else {
     menuNote = genNullNote(questInfo);
   }
@@ -164,14 +205,30 @@ function genMenuNote(questInfo) {
 }
 
 function genMenuRegion(questInfo) {
-  const menuRegion = createEle('span', questInfo.region_name);
-  menuRegion.addEventListener('click', showDataConfirm.bind(
-    {
-      regionId: questInfo.region_id,
-      show: true
-    }
-  ));
+  const menuRegion = createEle(
+    'span',
+    questInfo.region_name,
+    null,
+    null,
+    null,
+    { regid: questInfo.region_id });
+  menuRegion.addEventListener('click', showDataConfirm);
   return createEle('span', menuRegion, menuClass(questInfo));
+}
+
+// filter generation
+function genMarkerFilt(menuInfo, questInfo, genMultiFilt) {
+  if (questInfo.is_multi && genMultiFilt) {
+    const isMulti = 'quest_count' in questInfo && questInfo.quest_count > 1;
+    const mfilt = isMulti
+      ? { done: null }
+      : { undone: null };
+    Updater.genInfoFilt(
+      menuInfo,
+      Object.assign(mfilt, { quest: questInfo.id })
+    );
+  }
+  return menuInfo;
 }
 
 /**
@@ -180,40 +237,52 @@ function genMenuRegion(questInfo) {
  * @param {Node|Element|HTMLElement} sect main container element of all quest data
  * @param {JSON} questInfo querried data in json format
  * @param {DataContxt} contxtRef DataContxt obj
- * @param {string} mode could be 'all', 'noreg' and 'multi'
+ * @param {string} mode could be 'all', 'noreg', 'sec' and 'multi'
  * @returns {Node|Element|HTMLElement}
  */
-function consoQueryData(sect, questInfo, contxtRef, mode = 'all') {
+function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt = true, forceMultiInfo = false) {
+  const multiMode = mode === 'multi';
+  const noReg = mode === 'noreg' || mode === 'sec';
+  const finMode = mode === 'marked';
   const dataId = questInfo.id.toString(10);
   const multiIdRef = contxtRef.createId(dataId, 'multi'); // attached the id even if not multi
   const questIdRef = contxtRef.createId(dataId, 'gen');
   const menuData = [
     [
-      genMenuMarker(multiIdRef, multiIdRef), 'marker'
+      genMenuMarker(questInfo, multiIdRef, mode === 'sec' || null), 'marker'
     ],
     [
-      mode === 'multi' ? genMenuRegNm(questInfo) : null, 'regname'
+      multiMode ? genMenuRegNm(questInfo) : null, 'regname'
     ],
     [
       genMenuName(questInfo), 'questname'
     ],
     [
-      mode !== 'multi' ? genMenuLvl(questInfo) : null, 'lvl'
+      !multiMode && !finMode ? genMenuLvl(questInfo) : null, 'lvl'
     ],
     [
-      mode !== 'multi' ? genMenuCut(questInfo, questIdRef) : null, 'cut'
+      !multiMode && !finMode ? genMenuCut(questInfo, questIdRef) : null, 'cut'
     ],
     [
-      mode !== 'multi' ? genMenuNote(questInfo) : null, 'note'
+      !multiMode && !finMode ? genMenuNote(questInfo) : null, 'note'
     ],
     [
-      mode !== 'multi' && mode !== 'noreg' ? genMenuRegion(questInfo) : null, 'reg'
+      !multiMode && !finMode && !noReg ? genMenuRegion(questInfo) : null, 'reg'
     ]
   ];
   const menuCont = createEle('div', null, 'menu-cont');
   for (const [ele, type] of menuData) {
     if (ele === null) continue;
-    menuCont.appendChild(createEle('span', ele, type));
+    const menuInfo = createEle('span', ele, type);
+    if (type === 'cut' && questInfo.cut !== null) {
+      Updater.genInfoFilt(
+        menuInfo,
+        { cutoff: questInfo.id }
+      );
+    } else if (type === 'marker' && !multiMode) {
+      genMarkerFilt(menuInfo, questInfo, genMultiFilt);
+    }
+    menuCont.appendChild(menuInfo);
   }
   const infoCont = new InfoCont(
     null,
@@ -223,7 +292,9 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all') {
   sect.append(menuCont, infoCont.getInfo);
   const infoReg = 'region_id' in questInfo ? questInfo.region_id : null;
   sect.classList.add('quest-container');
-  sect.dataset.info = `${dataId}#${infoReg}#${questInfo.req_level}`;
+  if (questInfo.is_multi && !multiMode) sect.classList.add('multi-info');
+  if (multiMode) sect.classList.add('sub-multi-info');
+  sect.dataset.info = `${dataId}#${forceMultiInfo && questInfo.is_multi ? 1 : infoReg}#${questInfo.req_level}`;
   sect.addEventListener('mouseenter', inputVisibility);
   sect.addEventListener('mouseleave', inputVisibility);
   sect.addEventListener('click', questMarking);
@@ -231,37 +302,31 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all') {
   // attached the questMarking on the sect
 }
 
-function displayQuestData(infoCont, infosData, eleType, contxtRef, mode = 'all') {
-  // if infoCont is a function, infoData will be passed to it and it should return an element where the infoData will be appended
-  for (const infoData of infosData) {
-    infoCont = typeof infoCont === 'function' ? infoCont(infoData) : infoCont;
-    const questCont = document.createElement(eleType);
-    infoCont.appendChild(consoQueryData(questCont, infoData, contxtRef, mode));
-  }
-}
-
-// replaces genNoteHeader and displayQuestData
-function testNoteHeader(headersData) {
+function genNoteHeader(headersData) {
   const containerEle = createEle('div', null, 'quest-header');
   for (const headerD of headersData) { // header
     if (!headerD) continue;
     const [hClass, hName] = headerD;
     const noteSpan = document.createElement('span');
-    noteSpan.className = hClass;
-    noteSpan.innerHTML = hName;
+    noteSpan.classList.add(hClass);
+    noteSpan.appendChild(
+      document.createTextNode(hName)
+    );
     containerEle.appendChild(noteSpan);
   }
   return containerEle;
 }
 
 function questHeaderAry(mode = 'all') {
+  const finMode = mode === 'marked';
+  const noReg = mode === 'noreg' || mode === 'sec';
   const headersData = [
     mode === 'multi' ? ['headers-regname', 'Region Name'] : null,
     ['headers-questname', 'Quest Name'],
-    mode !== 'multi' ? ['headers-questlvl', 'Level'] : null,
-    mode !== 'multi' ? ['headers-affected', 'Affected'] : null,
-    mode !== 'multi' ? ['headers-notes', 'Notes'] : null,
-    mode !== 'multi' && mode !== 'noreg'
+    mode !== 'multi' && !finMode ? ['headers-questlvl', 'Level'] : null,
+    mode !== 'multi' && !finMode ? ['headers-affected', 'Affected'] : null,
+    mode !== 'multi' && !finMode ? ['headers-notes', 'Notes'] : null,
+    mode !== 'multi' && !finMode && !noReg
       ? ['headers-regquest', 'Reqion Quests']
       : null
   ];
@@ -278,16 +343,24 @@ function questHeaderAry(mode = 'all') {
  * @param {String} mode 'all', 'multi' or 'noreg'
  * @returns {QuestCont}
  */
-function testQuestData(contAttr, eleType, infosData, contxtRef, mode = 'all') {
+function displayQuestData(contAttr, eleType, infosData, contxtRef, mode = 'all') {
   // if infoCont is a function, infoData will be passed to it and it should return an element where the infoData will be appended
 
-  const questObj = new QuestCont(
-    null,
-    isObj(contAttr) ? contAttr : null
-  );
+  let questObj;
+  if (Array.isArray(contAttr)) {
+    questObj = new QuestCont(
+      null,
+      ...contAttr
+    );
+  } else {
+    questObj = new QuestCont(
+      null,
+      contAttr
+    );
+  }
 
   questObj.setHeader(
-    testNoteHeader(
+    genNoteHeader(
       questHeaderAry(mode)
     )
   );
@@ -302,23 +375,81 @@ function testQuestData(contAttr, eleType, infosData, contxtRef, mode = 'all') {
 
 /**
  *
- * @param {{Str:String}} contAttr for setting attributes
+ * @param {{Str:String}|[{Str:String}]} contAttr for setting attributes
  * @param {String} mode 'all', 'multi' or 'noreg'
  * @returns {QuestCont}
  */
 function genQuestCont(contAttr, mode = 'all') {
-  const questObj = new QuestCont(
-    null,
-    isObj(contAttr) ? contAttr : null
-  );
+  let questObj;
+  if (Array.isArray(contAttr)) {
+    questObj = new QuestCont(
+      null,
+      ...contAttr
+    );
+  } else {
+    questObj = new QuestCont(
+      null,
+      contAttr
+    );
+  }
 
   questObj.setHeader(
-    testNoteHeader(
+    genNoteHeader(
       questHeaderAry(mode)
     )
   );
 
   return questObj;
+}
+
+class FormattedQuest {
+  #sect;
+  #restPar;
+
+  /**
+   *
+   * @param {String} typeQ "aff", "sec"
+   * @param {DataContxt|HTMLElement|Element|String} pContxt
+   * @param {string} cContxt
+   */
+  constructor(typeQ, pContxt, cContxt) {
+    const defInfoCls = 'qinfo';
+
+    let curContxt;
+    let questCls;
+    if (typeQ === 'aff') {
+      curContxt = new DataContxt(pContxt, `cut${cContxt}`);
+      questCls = new DataContxt(curContxt, defInfoCls).newContxt;
+      this.#sect = ['div', null, questCls];
+      this.#restPar = [curContxt, 'noreg', true];
+    } else if (typeQ === 'sec') {
+      curContxt = new DataContxt(pContxt, `regid${cContxt}`);
+      questCls = new DataContxt(curContxt, defInfoCls).newContxt;
+      this.#sect = ['div', null, questCls];
+      this.#restPar = [curContxt, 'sec', false];
+    } else if (typeQ === 'cruc') {
+      curContxt = new DataContxt(pContxt, `lvl${cContxt}`);
+      this.#sect = ['div', null, CgRightSect.questCls];
+      this.#restPar = [curContxt, 'noreg', true];
+    } else if (typeQ === 'reg') {
+      curContxt = new DataContxt(pContxt, `reg${cContxt}`);
+      this.#sect = ['div', null, CgRightSect.questCls];
+      this.#restPar = [curContxt, 'sec', false];
+    }
+  }
+
+  get questCls() {
+    return this.#sect[2];
+  }
+
+  genQuestData(questInfo, forceMultiInfo = false) {
+    return consoQueryData(
+      createEle(...this.#sect),
+      questInfo,
+      ...this.#restPar,
+      forceMultiInfo
+    );
+  }
 }
 
 // plan:

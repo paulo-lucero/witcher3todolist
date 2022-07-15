@@ -3,7 +3,8 @@
     DataContxt,
     questSectMenu,
     inputLvlQuery,
-    retreiveCrucialData
+    retreiveCrucialData,
+    Updater
  */
 
 // const sTime = Date.now();
@@ -68,20 +69,15 @@ const markData = {
   selectOn: false,
   doneMode: true
 };
-const menuNames = { // for easy code revision later
-  affName: 'Affected',
-  misName: 'Missable',
-  enmName: 'Enemies'
-};
 
 function allowEvt(mode = null) {
   // additional/changes functionalities, only need to work on this function
   const [isAllow, messg] = mode === 'allow-select'
     ? [!queryData.isQueryActive, 'Server is Busy']
-    : [!queryData.isQueryActive && !markData.selectOn, 'Server is Busy OR in selection mode'];
+    : [!queryData.isQueryActive && !Updater.selectOn, 'Server is Busy OR in selection mode'];
 
   if (!isAllow) {
-    console.log(messg);
+    console.trace(messg);
   }
 
   return isAllow;
@@ -129,15 +125,25 @@ function createEle(eleName, inhtml, eleCls = null, idName = null, custAtr = null
   return eleObj;
 }
 
-function createUrl(urlLink, urlName) {
-  const aTag = document.createElement('a');
-  aTag.href = urlLink;
-  aTag.innerHTML = urlName;
-  aTag.target = '_blank';
+function createUrl(urlLink, urlName, func) {
+  const invalidStrs = ['null', 'undefined'];
+  let aTag;
+  if (urlLink && typeof urlLink === 'string' && urlLink.trim() && !invalidStrs.includes(urlLink)) {
+    aTag = document.createElement('a');
+    aTag.href = urlLink;
+    aTag.innerHTML = urlName;
+    aTag.target = '_blank';
+  } else {
+    if (typeof func === 'function') {
+      aTag = func(urlLink, urlName);
+    } else {
+      aTag = createEle('span', urlName);
+    }
+  }
   return aTag;
 }
 
-async function queryInfo(queryUrl, addtlData = null, noBlock = false) {
+async function queryInfo(queryUrl, addtlData = null, noBlock = false, logInfo = false) {
   if (!noBlock ? queryData.disableQuery(true) : true) {
     const fetchData = { cache: 'no-cache' };
     if (addtlData && typeof addtlData === 'object') {
@@ -162,7 +168,7 @@ async function queryInfo(queryUrl, addtlData = null, noBlock = false) {
         const errBody = 'code' in jsoniedInfo ? jsoniedInfo.code : jsoniedInfo.stringnified;
         throw new Error(`${jsoniedInfo.error}! status:\n ${errBody}`);
       }
-      console.log(jsoniedInfo);
+      if (logInfo) console.log(jsoniedInfo);
       if (!noBlock) {
         queryData.disableQuery(false);
       }
@@ -182,29 +188,6 @@ function GenNotesData(queryFunc, noteClass, noteHeaders, noteItems, menuClass = 
   this.noteItems = noteItems; // orders is important
 }
 
-function genNoteHeader(containerEle, headerEleName, headersDef = null) {
-  const defaultData = [
-    ['headers-questname', 'Quest Name'],
-    ['headers-questlvl', 'Level'],
-    ['headers-affected', 'Affected'],
-    ['headers-notes', 'Notes'],
-    ['headers-regquest', 'Reqion Quests']
-  ];
-  const headersData = Array.isArray(headersDef) &&
-  headersDef.every(headerData => Array.isArray(headerData))
-    ? headersDef
-    : typeof headersDef === 'number'
-      ? defaultData.slice(0, headersDef)
-      : defaultData;
-  for (const [hClass, hName] of headersData) { // header
-    const noteSpan = document.createElement(headerEleName);
-    noteSpan.className = hClass;
-    noteSpan.innerHTML = hName;
-    containerEle.appendChild(noteSpan);
-  }
-  return containerEle;
-}
-
 function removeData(noteData) {
   let noteInfos;
   if (!Array.isArray(noteData)) {
@@ -217,25 +200,6 @@ function removeData(noteData) {
       noteInfo.removeChild(noteInfo.firstChild);
     }
   }
-}
-
-function closeNotes(noteContainer, noteClassEle, menuContainer = null) {
-  // can use closeNotes to call remove childnodes, just need to pass the noteContainer in an Array
-  // when overlay show, noteContainer still dont have any child and menuContainer have childnodes(its length is <= 1)
-  // does the value should be null to avoid returning true
-  const isSameNote = !!noteClassEle; // if same note return true
-  if (menuContainer && ((typeof menuContainer === 'object' && menuContainer.children.length === 1) || isSameNote)) {
-    // if single note/menu or same note found, don't allowed to close it
-    return true;
-  }
-  if (Array.isArray(noteContainer)) {
-    removeData(noteContainer);
-  } else {
-    if (noteContainer) {
-      noteContainer.remove();
-    }
-  }
-  return isSameNote;
 }
 
 function retreiveNull(mesg = null) {
@@ -324,7 +288,6 @@ class CgLSect {
   static menuCls = 'lsect-menu';
   static mainId = 'lsect-menu-main';
   static secId = 'lsect-menu-sec';
-  static questCls = 'lsect-reg-info-quests';
 }
 
 async function createLSect() {
@@ -398,13 +361,18 @@ class CgRightSect {
 
   static cateData = [
     this.order(1, 1),
-    this.order(2, 1),
-    this.order(3, 1)
+    this.order(3, 1),
+    this.order(2, 1)
   ];
 
   static refs = [];
   static recentLvl = parseInt(inputData.inputEle.value, 10);
   static questCls = 'rsect-info-quests';
+  static crucHeadCls = 'rsect-cruc-mainhead';
+  static #exclLvlRange = 2; // range of level not included, e.g. 25 - 2 = 23, 25 to 24 is not included isn't considered risk
+  static get exclLvlR() {
+    return CgRightSect.#exclLvlRange;
+  }
 }
 
 async function createRightInfo() {
@@ -422,7 +390,10 @@ async function createRightInfo() {
   const scContxt = new DataContxt(crucContxt, 'sca');
   const scIdf = scContxt.createId('scv');
   const scInfo = new InfoCont(null, { id: scIdf.getId });
-  scInfo.addHeader(createEle('div', 'Scavenger Quests'));
+  scInfo.addHeader(createEle(
+    'div',
+    'Scavenger Quests',
+    CgRightSect.crucHeadCls));
   rInfoEle.appendInfo(scInfo);
   CgRightSect.refs.push(scIdf.getId);
   //
@@ -443,7 +414,12 @@ async function createRightInfo() {
     }
 
     const crucInfo = new InfoCont(null, ...cateInfos);
-    crucInfo.addHeader(createEle('div', crucName));
+    crucInfo.addHeader(createEle(
+      'div',
+      crucName,
+      crucCon !== 'ol'
+        ? CgRightSect.crucHeadCls
+        : null));
     rInfoEle.appendInfo(crucInfo);
     CgRightSect.refs.push(cateIds);
   }
@@ -470,3 +446,63 @@ async function createRightInfo() {
   return true;
 }
 //
+
+// [Setup of Overlay]
+class CgOverlay {
+  static overlayOn = false;
+  static noteID = 'qnotes-overlay';
+  static confirmID = 'confirm-overlay';
+  static finishedID = 'qdone-overlay';
+  /**
+   * @type {InfoCont}
+   */
+  static infoObj = null;
+  static w3Body = document.getElementById('w3g-body');
+  static ovlCls = 'overlay-container'; // identifier for InfoCont.removeData
+  static curOpenID = null; // element id of the current opened overlay, for closing
+  static curQuestID = null; // storing data for quest ID
+  static curRegID = null; // storing data for region ID
+}
+
+function setupOverlays() {
+  const w3Overlay = document.getElementById('w3g-overlay');
+  const overlayInfo = new InfoCont(
+    null,
+    { id: CgOverlay.noteID },
+    { id: CgOverlay.confirmID },
+    { id: CgOverlay.finishedID }
+  );
+  w3Overlay.parentElement.replaceChild(
+    overlayInfo.getInfo,
+    w3Overlay
+  );
+  overlayInfo.getInfo.id = w3Overlay.id;
+  overlayInfo.getInfo.addEventListener('click', closeNotesOverlay);
+  CgOverlay.infoObj = overlayInfo;
+}
+
+function openOverlay() {
+  CgOverlay.w3Body.classList.add('show-overlay-backg');
+  Object.assign(arguments[0], { add: { class: 'show-overlay-body' } });
+  CgOverlay.curOpenID = arguments[0].id;
+  CgOverlay.infoObj.insert(...arguments);
+  CgOverlay.overlayOn = true;
+}
+
+function closeNotesOverlay(evt) { // closing overlay notes menu
+  const openNotes = evt.target;
+  // using "currentTarget", the target is always element with "qnotes-body" id, regardless where click event is dispatched
+  if (openNotes.id !== CgOverlay.curOpenID) return;
+  InfoCont.removeData(
+    document.getElementsByClassName(CgOverlay.ovlCls),
+    { rmv: { class: 'show-overlay-body' } }
+  );
+  CgOverlay.w3Body.classList.remove('show-overlay-backg');
+  CgOverlay.overlayOn = false;
+  Updater.isDone = true;
+}
+
+// Get the body-overlay
+
+// !Affected variables
+//  noteConts, markData
