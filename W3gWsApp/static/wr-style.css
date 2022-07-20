@@ -220,37 +220,13 @@ body.in-query * {
   cursor: pointer;
 }
 
-.quest-marker {
+.hidden-marker {
   visibility: hidden;
 }
 
 #w3g-body.select-on .quest-marker,
-#done-data-cont.select-on .quest-marker {
+#w3g-overlay.select-on .quest-marker {
   visibility: revert !important;
-}
-
-#done-data-cont {
-  width: 70vw;
-  height: 65vh;
-  overflow: auto;
-}
-
-#qdone-bttns {
-  position: relative;
-}
-
-#qdone-bttns .select-mode {
-  position: absolute;
-  right: 7vw;
-  display: inline-block;
-  width: 7vw;
-}
-
-#qdone-bttns .cancel-mode {
-  position: absolute;
-  right: 0px;
-  display: none;
-  width: 7vw;
 }
 
 .cont-status-close {

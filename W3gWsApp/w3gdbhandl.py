@@ -284,6 +284,9 @@ def gen_filter(fils, mode='done'):
             'cutoff': 'all_quests.cutoff =?',
             'quest': 'changes_quest.quest_id =?',
             'cruc': '(all_quests.req_level <= (? - 2 ) OR (all_quests.category_id = 4 AND all_quests.req_level <=?))'
+        },
+        'othr': {
+            'sreg': 'region.id IN (SELECT changes_quest.region_id FROM changes_quest)'
         }
     }
 
@@ -308,3 +311,19 @@ def gen_filter(fils, mode='done'):
             raise ValueError('no filter type found')
 
     return ' OR '.join(fils_whr)
+
+def gen_filt_cmd(fil_basis, fil_type):
+    styl = 'chall'
+    selct = ['all_quests.cutoff', 'all_quests.category_id', 'all_quests.undone_count AS quest_count']
+    frm = None
+    whr = gen_filter(fil_basis, fil_type)
+    af_whr = None
+    
+    if fil_type == 'info':
+        styl = 'mall'
+        af_whr = 'GROUP BY all_quests.id'
+    elif fil_type == 'othr':
+        selct = 'region.id, region.region_name, region.side_count'
+        frm = 'region'
+
+    return gen_query_cmd(styl, select=selct, _from=frm, where=whr, af_wh=af_whr)

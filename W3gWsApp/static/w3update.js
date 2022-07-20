@@ -7,7 +7,10 @@
     isEles,
     parsedAll,
     queryInfo,
-    EleData
+    EleData,
+    crucNoData,
+    mainNoData,
+    finishedNoData
 */
 
 function isObj(obj) {
@@ -146,7 +149,7 @@ function insertData(qData, contEle, sortBasis, ascS = true) {
   contEle.insertBefore(qData, dLength < 4 ? linSrchR(allqData, 0) : binSrchR(allqData, dLength - 1, 0, null));
 }
 
-function GenFetchInit(qrData, infoFil = null, contFil = null, getInfo = false, note = null) {
+function GenFetchInit(qrData, infoFil = null, contFil = null, othrFil = null, getInfo = false, note = null) {
   this.method = 'PATCH';
   this.headers = {
     'Content-Type': 'application/json'
@@ -156,7 +159,8 @@ function GenFetchInit(qrData, infoFil = null, contFil = null, getInfo = false, n
       questData: qrData,
       filter: {
         info: infoFil,
-        cont: contFil
+        cont: contFil,
+        othr: othrFil
       },
       done: !(getInfo || note) ? Updater.isDone : null,
       redo: !(getInfo || note) ? !Updater.isDone : null,
@@ -274,6 +278,18 @@ class QuestCont {
   #headWrpEle;
   #bodyWrpEle;
   #footWrpEle;
+
+  /**
+   *
+   * @param {Element|HTMLElement} ele
+   * @returns {Boolean}
+   */
+  static isBody(ele) {
+    if (!isEle(ele)) return false;
+
+    return ele.classList.contains(QuestCont.#bodyCls);
+  }
+
   /**
    * Container that doesn't need to persist
    * @param {Element|HTMLElement|null} obj
@@ -518,15 +534,17 @@ class InfoCont {
 
   /**
    * Container that needed to persist
-   * @param {{id:String, select:String}} identf use "id" for getElementById or "select" for querySelector
+   * @param {InfoCont|{id:String, select:String}} identf use "id" for getElementById or "select" for querySelector
    * @returns {undefined|boolean}
    */
   static isOpen(identf) {
-    const infoEle = isObj(identf)
-      ? ('id' in identf
-          ? document.getElementById(identf.id)
-          : document.querySelector(Object.values(identf)[0]))
-      : null;
+    const infoEle = (InfoCont.#isInfoObj(identf) || InfoCont.#isInfo(identf)) || (
+      isObj(identf)
+        ? ('id' in identf
+            ? document.getElementById(identf.id)
+            : document.querySelector(Object.values(identf)[0]))
+        : null
+    );
     if (!infoEle) return;
     const isInfo = infoEle.classList.contains(InfoCont.#infoCls);
     if (isInfo && !(infoEle.classList.contains(InfoCont.#closeCls))) return true; // info
@@ -712,9 +730,11 @@ class InfoCont {
    */
   constructor(obj, ...subArgs) {
     this.#InfoEle = InfoCont.#isInfo(obj);
+    let newInfo = false;
     if (!this.getInfo) {
       this.#InfoEle = createEle('div', null, InfoCont.#infoCls);
       if (isObj(obj)) setAttrs(this.getInfo, obj, true);
+      newInfo = true;
     }
     let fClose = true;
 
@@ -731,7 +751,7 @@ class InfoCont {
         }
       }
     }
-    if (fClose && !(this.getInfo.classList.contains(InfoCont.#closeCls))) {
+    if (newInfo && fClose) {
       this.getInfo.classList.add(InfoCont.#closeCls);
     }
   }
@@ -807,6 +827,7 @@ class Updater {
   static #beforeFuncs = new Set();
   static #infoUpdater = new Set();
   static #contUpdater = new Set();
+  static #othrUpdater = new Set();
   static #contFiltSpec = {
     main: null,
     second: null,
@@ -825,6 +846,10 @@ class Updater {
     quest: 'number',
     region: [1, 2, 3, 4, 5, 6, 7],
     second: null
+  };
+
+  static #othrFiltSpec = {
+    sreg: [1, 2, 3, 4, 5, 6, 7]
   };
 
   /**
@@ -898,6 +923,7 @@ class Updater {
       : '';
     if (isEle(ele)) {
       ele.dataset.contfilt = filt;
+      return ele;
     } else {
       return {
         'data-contfilt': filt
@@ -920,6 +946,31 @@ class Updater {
     ele.dataset.infofilt = (filtEntries !== null)
       ? filtEntries.map(filD => filD.join(':')).join('-')
       : '';
+  }
+
+  /**
+   * filter basis for quest info elements, for updating quest data
+   * @param {Element|HTMLElement|null} ele Element
+   * @param {{str:String|Number|null}} filData key: filter | value: filter value
+   */
+  static genOthrFilt(ele, filData) {
+    if (!isObj(filData)) return;
+    const filtEntries = Updater.#filtValidt(
+      filData,
+      Updater.#othrFiltSpec
+    );
+
+    const filt = (filtEntries !== null)
+      ? filtEntries.map(filtD => filtD.join(':')).join('-')
+      : '';
+    if (isEle(ele)) {
+      ele.dataset.othrfilt = filt;
+      return ele;
+    } else {
+      return {
+        'data-othrfilt': filt
+      };
+    }
   }
 
   static addBeforeFunc(func) {
@@ -947,6 +998,11 @@ class Updater {
     Updater.#contUpdater.add(func);
   }
 
+  static addOthrUpdater(func) {
+    if (typeof func !== 'function') return;
+    Updater.#othrUpdater.add(func);
+  }
+
   static async update(addtl) {
     Updater.#beforeFuncs.forEach(
       func => func(addtl)
@@ -956,13 +1012,16 @@ class Updater {
 
     const infoEles = new EleData('[data-infofilt]');
     const contEles = new EleData('[data-contfilt]');
+    const othrEles = new EleData('[data-othrfilt]');
 
     const infoFilt = Updater.#consoFilt(infoEles.parsed);
+    const othrFilt = Updater.#consoFilt(othrEles.parsed);
     const contFilt = !(Updater.isDone)
       ? Updater.#consoFilt(contEles.parsed)
       : null;
 
     const selectedInfo = document.getElementsByClassName('quest-container info-selected');
+    if (selectedInfo.length === 0) return;
     const parsedInfos = parsedAll(selectedInfo, 'level');
     if (Updater.isDone) {
       const doneDate = Date.now();
@@ -976,7 +1035,8 @@ class Updater {
       new GenFetchInit(
         parsedInfos,
         infoFilt,
-        contFilt)
+        contFilt,
+        othrFilt)
     );
 
     if (updResult.err_r) {
@@ -1008,6 +1068,7 @@ class Updater {
 
     const resultInfo = updResult.result.info;
     const resultCont = updResult.result.cont;
+    const resultOthr = updResult.result.othr;
     const updaterFuncs = [
       [
         resultInfo
@@ -1020,11 +1081,21 @@ class Updater {
           ? Updater.#contUpdater
           : null,
         { parsed: contEles, result: resultCont, addtl }
+      ],
+      [
+        resultOthr
+          ? Updater.#othrUpdater
+          : null,
+        { parsed: othrEles, result: resultOthr, addtl }
       ]
     ];
     for (const [updrs, resultData] of updaterFuncs) {
       if (updrs === null) continue;
       updrs.forEach(updr => updr(resultData));
     }
+
+    crucNoData();
+    mainNoData();
+    finishedNoData();
   }
 }

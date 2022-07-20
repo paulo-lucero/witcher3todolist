@@ -17,7 +17,9 @@
     CgRightSect,
     genQuestCont,
     QuestCont,
-    CgOverlay
+    CgOverlay,
+    CgLSect,
+    genRegCountEle
 */
 
 function toggleRemove(dataCont) {
@@ -248,23 +250,38 @@ Updater.addContUpdater(
    */
   function(reslt) {
     const eleData = reslt.parsed;
+    let mainCont = eleData.getEleAll('main', null);
+    if (!mainCont || mainCont.length === 0) return;
+
+    mainCont = mainCont[0];
+    const mainMenu = document.getElementById('lsect-menu-cont');
+    const subID = IdRef.getIdRef(mainMenu);
     for (const questInfo of reslt.result) {
       const questCat = questInfo.category_id;
       if (questCat !== 1) continue;
-      const mainConts = eleData.getEleAll('main', null);
-      if (!mainConts || mainConts.length === 0) continue;
 
-      for (const mainCont of mainConts) {
-        const mainMenu = document.getElementById('lsect-menu-cont');
-        const mainContxt = new DataContxt(mainMenu, 'main');
-
-        const mainQuest = consoQueryData(
-          createEle('div'),
-          questInfo,
-          mainContxt
+      if (!QuestCont.isBody(mainCont)) {
+        CgLSect.infoObj.closeSub({ id: subID });
+        mainCont = genQuestCont(
+          [
+            null,
+            null,
+            Updater.genContFilt(null, { main: null })
+          ]
         );
-        insertData(mainQuest, mainCont, 'questId');
+
+        CgLSect.infoObj.insert({ id: subID }, mainCont.main, mainCont.body);
+        mainCont = mainCont.body;
       }
+
+      const mainContxt = new DataContxt(mainMenu, 'main');
+
+      const mainQuest = consoQueryData(
+        createEle('div'),
+        questInfo,
+        mainContxt
+      );
+      insertData(mainQuest, mainCont, 'questId');
     }
   }
 );
@@ -372,14 +389,68 @@ Updater.addContUpdater(
   }
 );
 
-// secondary, dont produce null data instead dont insert anything or no eventlistener
-//  just like cutoff
+// multi
+Updater.addContUpdater(
+  /**
+   *
+   * @param {{parsed:EleData, result:Any}} reslt
+   */
+  function(reslt) {
+    const eleData = reslt.parsed;
 
-// main null data and quest infos don't share container
-//  filter basis data should be on subinfo
-//  if null data exist and there is quest info to insert
-//   delete null data and generate new quest cont
-//  if not, get the quest cont(firstElementChild of the subinfo) and make it into QuestCont object
-//  if QuestCont.main dont have parentElement, insert it to the subinfo
+    for (const questInfo of reslt.result) {
+      const questID = questInfo.id;
+      const multiConts = eleData.getEleAll('quest', questID);
 
-// count query and updater
+      if (!multiConts || multiConts.length === 0) continue;
+
+      for (const multiCont of multiConts) {
+        const infoEle = getParent(multiCont, { class: 'quest-container' });
+
+        if (infoEle === undefined) {
+          throw new Error('Quest Container Not Found');
+        }
+
+        const multiMenu = infoEle.querySelector('.marker .mult-reg.info-marker');
+        const multiQuest = new FormattedQuest(
+          'multi',
+          IdRef.getIdRef(multiMenu),
+          questID
+        );
+
+        insertData(
+          multiQuest.genQuestData(questInfo),
+          multiCont,
+          'regionId'
+        );
+      }
+    }
+  }
+);
+
+// count updater
+
+// region-sec
+Updater.addOthrUpdater(
+  /**
+   *
+   * @param {{parsed:EleData, result:Any}} reslt
+   */
+  function(reslt) {
+    const eleData = reslt.parsed;
+
+    for (const regData of reslt.result) {
+      const questCount = regData.side_count;
+      const regID = regData.id;
+
+      const regEles = eleData.getEleAll('sreg', regID);
+      if (!regEles || regEles.length === 0) continue;
+
+      for (const regEle of regEles) {
+        regEle.parentElement.replaceChild(genRegCountEle(questCount, regID), regEle);
+      }
+    }
+  }
+);
+
+// select mode

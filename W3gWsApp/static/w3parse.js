@@ -26,7 +26,8 @@ class EleData {
     const configParse = {
       info: ['questId', 'regionId', 'level'],
       contfilt: null,
-      infofilt: null
+      infofilt: null,
+      othrfilt: null
     };
     function parseVal(strng) {
       const resultPars = parseInt(strng, 10);

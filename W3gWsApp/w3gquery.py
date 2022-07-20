@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 import imp
 import click
 from flask import Blueprint, jsonify
@@ -129,6 +130,7 @@ def quest_done():
     modif_count = 0
     err_r = None
     sql_cmd = None
+    trxn_c = w3gdbhandl.gen_trxnid()
 
     if json_data['done'] or json_data['redo']:
         # insert quest_id and region_id in a temporary db, that have status changed
@@ -136,7 +138,6 @@ def quest_done():
         no_of_changes = w3gdbhandl.create_tempdb(cur_db, quest_data, json_data['redo'])
         '''Logging'''
         w3gdbhandl.debugdb_copy_changes(conn_db)
-        trxn_c = w3gdbhandl.gen_trxnid()
 
         # done or redo
         cur_db.execute(f'''
@@ -156,12 +157,7 @@ def quest_done():
             if fil_basis:
                 fil_cmd = None
                 try:
-                    fil_cmd = w3gdbhandl.gen_query_cmd(
-                                'mall' if fil_type == 'info' else 'chall',
-                                select=['all_quests.cutoff', 'all_quests.category_id', 'all_quests.undone_count AS quest_count'],
-                                where=w3gdbhandl.gen_filter(fil_basis, fil_type),
-                                af_wh='GROUP BY all_quests.id' if fil_type == 'info' else None
-                            )
+                    fil_cmd = w3gdbhandl.gen_filt_cmd(fil_basis, fil_type)
                     cur_db.execute(fil_cmd)
                     result_query = cur_db.fetchall()
                     quest_aff[fil_type] = result_query if len(result_query) > 0 else None
@@ -177,15 +173,16 @@ def quest_done():
 
     elif json_data['query']:
         query_info = json_data['query']
-        addlt_wh = f" AND {query_info} - quest_region.date_change <= 86400000" if isinstance(query_info, int) else '' # this could scan whole table, it will need to check every date_change
-        cur_db.execute(
-            w3gdbhandl.gen_query_cmd(
-                'mregion',
-                select=['quest_region.date_change'],
-                where='quest_region.status_id = 2' + addlt_wh,
-                af_wh=['ORDER BY quest_region.region_id ASC, quest_region.date_change DESC']
-            )
+        addlt_wh = f" AND {query_info} - quest_region.date_change <= 86400000" if type(query_info) == int else '' # this could scan whole table, it will need to check every date_change
+        q_cmd = w3gdbhandl.gen_query_cmd(
+            'mregion',
+            select=['quest_region.date_change'],
+            where='quest_region.status_id = 2' + addlt_wh,
+            af_wh=['ORDER BY quest_region.region_id ASC, quest_region.date_change DESC']
         )
+        cur_db.execute(q_cmd)
+        '''Logging'''
+        w3gdbhandl.debugdb_logfil(conn_db, trxn_c, 'marked', None, q_cmd)
         return jsonify(cur_db.fetchall())
 
     elif json_data['note']:

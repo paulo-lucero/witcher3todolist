@@ -4,7 +4,8 @@
     questSectMenu,
     inputLvlQuery,
     retreiveCrucialData,
-    Updater
+    Updater,
+    IdRef
  */
 
 // const sTime = Date.now();
@@ -28,46 +29,6 @@ const inputData = {
   inputEle: document.querySelector('#level-query input'),
   arrowUp: document.querySelector('#input-arrowup'),
   arrowDown: document.querySelector('#input-arrowdown')
-};
-const noteConts = {
-  w3: document.getElementById('w3g-body'),
-  nBody: document.getElementById('qnotes-body'),
-  nHeader: document.getElementById('qnotes-header'),
-  nMenus: document.getElementById('qnotes-menus'),
-  nData: document.getElementById('qnotes-data'),
-  overlayOn: function(isOn) {
-    this.nBody.style.display = isOn ? 'flex' : 'none';
-    if (isOn) {
-      this.w3.style.filter = 'blur(5px)';
-    } else {
-      this.w3.style.removeProperty('filter');
-    }
-  }
-};
-const markData = {
-  doneSect: document.getElementById('qdone-data'),
-  doneCont: document.getElementById('done-quests'),
-  selectBttn: document.querySelector('#quest-query .select-mode'),
-  cancelBttn: document.querySelector('#quest-query .cancel-mode'),
-  doneSelect: document.querySelector('#qdone-bttns .select-mode'),
-  doneCancel: document.querySelector('#qdone-bttns .cancel-mode'),
-  recentBttn: document.getElementById('recent-done'),
-  allBttn: document.getElementById('all-done'),
-  doneDataCont: document.getElementById('done-data-cont'),
-  showDone: function(isShow) {
-    const qnoteEles = [noteConts.nHeader.style, noteConts.nMenus.style, noteConts.nData.style];
-    qnoteEles.forEach(qnoteEle => qnoteEle.setProperty('display', isShow ? 'none' : 'revert'));
-    this.doneSect.style.setProperty('display', isShow ? 'revert' : 'none');
-    if (!isShow) removeData(this.doneDataCont);
-    this.doneMode = !isShow;
-  },
-  selectRefrh: function() {
-    const hasSelected = document.querySelector('[data-selected="true"]') || !this.selectOn; // if select is on and has selected || if select is off -> need to revert
-    this.selectBttn.style.setProperty('cursor', hasSelected ? 'revert' : 'not-allowed');
-    return !!hasSelected;
-  },
-  selectOn: false,
-  doneMode: true
 };
 
 function allowEvt(mode = null) {
@@ -180,14 +141,6 @@ async function queryInfo(queryUrl, addtlData = null, noBlock = false, logInfo = 
   }
 }
 
-function GenNotesData(queryFunc, noteClass, noteHeaders, noteItems, menuClass = null) {
-  this.queryUrl = queryFunc;
-  this.menuClass = menuClass;
-  this.noteClass = noteClass; // orders is important
-  this.noteHeaders = noteHeaders; // orders is important
-  this.noteItems = noteItems; // orders is important
-}
-
 function removeData(noteData) {
   let noteInfos;
   if (!Array.isArray(noteData)) {
@@ -205,31 +158,6 @@ function removeData(noteData) {
 function retreiveNull(mesg = null) {
   const mesgNull = mesg || 'No Data Available';
   return createEle('div', mesgNull, 'retr-null');
-}
-
-function stylng(elmt, prty = null, getp = true) { // Window.getComputedStyle() is read-only
-  if (prty && getp === false) {
-    elmt.style.removeProperty(prty);
-  } else if (getp !== true) {
-    elmt.style.setProperty(prty, getp);
-  }
-  return elmt.style.getPropertyValue(prty) ? elmt.style.getPropertyValue(prty) : window.getComputedStyle(elmt).getPropertyValue(prty);
-}
-
-function undsplyEle(bodyConts, preBool = null) {
-  for (const bodyCont of bodyConts) {
-    const isDplyNone = stylng(bodyCont, 'display') === 'none';
-    const isHasNotes = preBool !== null ? preBool : bodyCont.hasChildNodes();
-    if (isDplyNone && isHasNotes) {
-      stylng(bodyCont, 'display', 'revert');
-    } else if (!isDplyNone && !isHasNotes) { // if "else" is use, the bodyCont will be none if the condition = isDplyNone is False while isHasNotes is True
-      stylng(bodyCont, 'display', 'none');
-      // possible results - false:
-      // true && false = unset && with childs - ok
-      // false && true = none && w/o childs - ok
-      // false && false = none && with child - ok
-    }
-  }
 }
 
 /**
@@ -336,6 +264,21 @@ async function createLSect() {
 
   return true;
 }
+
+function mainNoData() {
+  const infoObj = CgLSect.infoObj;
+  if (InfoCont.isOpen(infoObj)) return;
+  const subID = IdRef.getIdRef(document.getElementById('lsect-menu-cont'));
+
+  infoObj.insert(
+    { id: subID },
+    Updater.genContFilt(
+      retreiveNull(),
+      { main: null }
+    )
+  );
+}
+
 // [Setup of Right Section Pane]
 
 class CgRightSect {
@@ -445,6 +388,20 @@ async function createRightInfo() {
 
   return true;
 }
+
+function crucNoData() {
+  const infoObj = CgRightSect.infoObj;
+  if (InfoCont.isOpen(infoObj)) return;
+  const nullContnt = createEle(
+    'div',
+    `No Crucial Quests Data for level: ${CgRightSect.recentLvl}`,
+    CgRightSect.questCls);
+  infoObj.insert(
+    { id: CgRightSect.refs[0] },
+    nullContnt
+  );
+}
+
 //
 
 // [Setup of Overlay]
@@ -497,12 +454,20 @@ function closeNotesOverlay(evt) { // closing overlay notes menu
     document.getElementsByClassName(CgOverlay.ovlCls),
     { rmv: { class: 'show-overlay-body' } }
   );
+  const unHiddMarks = document.querySelectorAll('.quest-marker:not(.hidden-marker)');
+  for (const unHiddMark of unHiddMarks) {
+    unHiddMark.classList.toggle('hidden-marker');
+  }
   CgOverlay.w3Body.classList.remove('show-overlay-backg');
   CgOverlay.overlayOn = false;
   Updater.isDone = true;
 }
 
-// Get the body-overlay
-
-// !Affected variables
-//  noteConts, markData
+function finishedNoData() {
+  const infoObj = new InfoCont(document.getElementById('finished-body-cont'));
+  if (InfoCont.isOpen(infoObj)) return;
+  infoObj.insert(
+    { id: 'finished-null-cont' },
+    retreiveNull()
+  );
+}

@@ -307,8 +307,10 @@ function showDataConfirm(evt) {
 }
 /* global IdRef */
 async function displayRegionSect(evt) {
-  if (!allowEvt()) return;
   const regMenu = evt.currentTarget;
+  const questCount = parseInt(regMenu.dataset.regcount, 10);
+
+  if (questCount === 0 || !allowEvt()) return;
   const regContRef = IdRef.getIdRef(regMenu);
   const regionId = parseInt(regMenu.dataset.region, 10);
   const regQuest = new FormattedQuest('sec', regMenu, regionId);
@@ -353,6 +355,16 @@ async function displayRegionSect(evt) {
   );
 }
 
+function genRegCountEle(regCount, regID) {
+  return createEle(
+    'span',
+    document.createTextNode(regCount),
+    'quest-count',
+    null,
+    Updater.genOthrFilt(null, { sreg: regID })
+  );
+}
+
 async function questSectMenu(evt) {
   const menuTarg = evt.target;
   if (!(menuTarg.classList.contains(CgLSect.menuCls)) || !allowEvt()) return;
@@ -365,10 +377,13 @@ async function questSectMenu(evt) {
   const sectContxt = new DataContxt(sectMenu, isMain ? 'main' : 'sec');
   if (isMain) {
     const questInfos = await queryInfo('/query/main-quests-info');
-    if (questInfos === null) {
+    if (questInfos.length === 0) {
       CgLSect.infoObj.insert(
         { id: subID },
-        retreiveNull()
+        Updater.genContFilt(
+          retreiveNull(),
+          { main: null }
+        )
       );
       return;
     }
@@ -393,17 +408,19 @@ async function questSectMenu(evt) {
     const regionInfos = await queryInfo('/query/regions-info');
     const regionCont = createEle('div', null, 'qsec-body');
     for (const regionInfo of regionInfos) {
-      const lRegRef = new DataContxt(sectContxt, 'lreg').createId(regionInfo.id);
+      const questCount = regionInfo.quest_count;
+      const regID = regionInfo.id;
+      const lRegRef = new DataContxt(sectContxt, 'lreg').createId(regID);
       const regionMenu = createEle(
         'div',
         [
-          createEle('span', regionInfo.region_name, 'region-name'),
-          createEle('span', regionInfo.quest_count, 'quest-count')
+          createEle('span', document.createTextNode(regionInfo.region_name), 'region-name'),
+          genRegCountEle(questCount, regID)
         ],
         'region-menu',
         null,
         lRegRef.getRef,
-        { region: regionInfo.id }
+        { region: regID, regcount: questCount }
       );
       regionMenu.addEventListener('click', displayRegionSect);
       const regionBody = new InfoCont(
@@ -517,8 +534,8 @@ async function showMultiQuest(evt) {
   const curTarg = evt.currentTarget;
   const questID = curTarg.dataset.id;
   const subRef = IdRef.getIdRef(curTarg);
-  const multiContxt = new DataContxt(subRef, `multiq${questID}`);
-  const questCls = new DataContxt(multiContxt, 'qinfo').newContxt;
+  const multiQuest = new FormattedQuest('multi', subRef, questID);
+  const questCls = multiQuest.questCls;
 
   if (InfoCont.isOpen({ id: subRef })) {
     InfoCont.removeData(
@@ -530,16 +547,22 @@ async function showMultiQuest(evt) {
   const multiInfos = await queryInfo(`/query/qst-id-${questID}`);
   if (multiInfos.length === 0) return;
   const questCont = genQuestCont(
-    [null, null, { class: 'multi-contnr' }],
+    [
+      null,
+      null,
+      Object.assign(
+        {},
+        { class: 'multi-contnr' },
+        Updater.genContFilt(
+          null,
+          { quest: parseInt(questID, 10) }
+        )
+      )
+    ],
     'multi'
   );
   for (const multiInfo of multiInfos) {
-    const questEle = consoQueryData(
-      createEle('div', null, questCls),
-      multiInfo,
-      multiContxt,
-      'multi'
-    );
+    const questEle = multiQuest.genQuestData(multiInfo);
     questCont.insert(questEle);
   }
   InfoCont.insertData(
@@ -555,9 +578,9 @@ function inputVisibility(evt) {
   const questMarker = evt.target.querySelector('.quest-marker');
   const evtType = evt.type;
   if (evtType === 'mouseenter' && questMarker) {
-    questMarker.style.setProperty('visibility', 'revert');
+    questMarker.classList.remove('hidden-marker');
   } else if (evtType === 'mouseleave' && questMarker) {
-    questMarker.style.setProperty('visibility', 'hidden');
+    questMarker.classList.add('hidden-marker');
   }
 }
 
@@ -612,14 +635,14 @@ async function showQuestsDone(evt) {
 
   const questInfos = await queryInfo(
     '/query/request-modif',
-    new GenFetchInit(null, null, null,
+    new GenFetchInit(null, null, null, null,
       targ.id === 'recently-finished' ? Date.now() : true,
-      false, true
+      false
     )
   );
 
   const nullContID = { id: 'finished-null-cont' };
-  const finishedInfo = new InfoCont(null, nullContID);
+  const finishedInfo = new InfoCont({ id: 'finished-body-cont' }, nullContID);
   finishedBody.appendChild(finishedInfo.getInfo);
 
   if (questInfos.length === 0) {
@@ -687,12 +710,12 @@ function finishedOverlay(evt) {
           createEle(
             'span',
             'Select',
-            ['select', 'button']
+            ['select', 'button', 'toggle-bttn']
           ),
           createEle(
             'span',
             'Mark',
-            ['mark', 'button', 'hide-button']
+            ['mark', 'button', 'hide-button', 'toggle-bttn']
           )
         ],
         'left-buttons'
@@ -708,7 +731,7 @@ function finishedOverlay(evt) {
           createEle(
             'span',
             'Cancel',
-            ['cancel', 'button', 'hide-button']
+            ['cancel', 'button', 'hide-button', 'toggle-bttn']
           )
         ],
         'right-buttons'
@@ -772,13 +795,40 @@ function finishedOverlay(evt) {
  *
  * @param {Event} evt
  */
-function buttonsMangr(evt) {
+async function buttonsMangr(evt) {
+  const curTag = evt.currentTarget;
   const targClss = evt.target.classList;
   if (targClss.contains('finished')) {
     Updater.isDone = false;
     finishedOverlay(evt);
   } else if (targClss.contains('redo-all')) {
     redoAllQuest();
+  } else if (targClss.contains('toggle-bttn')) {
+    const bttns = curTag.querySelectorAll('.button');
+    for (const bttn of bttns) {
+      bttn.classList.toggle('hide-button');
+    }
+
+    const isSelect = targClss.contains('select');
+    const isMark = targClss.contains('mark');
+    const isCancel = targClss.contains('cancel');
+
+    if (isSelect || isMark || isCancel) {
+      if (InfoCont.isOpen(CgOverlay.infoObj)) {
+        CgOverlay.infoObj.getInfo.classList.toggle('select-on');
+      } else {
+        document.getElementById('w3g-body').classList.toggle('select-on');
+      }
+
+      Updater.selectOn = !Updater.selectOn;
+    }
+
+    if (isMark) {
+      await Updater.update();
+    } else if (isCancel) {
+      const selectedInfo = document.getElementsByClassName('quest-container info-selected');
+      Array.from(selectedInfo).forEach(questSelection);
+    }
   }
 }
 

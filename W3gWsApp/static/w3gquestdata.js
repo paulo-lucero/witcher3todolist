@@ -106,13 +106,13 @@ function genMenuMarker(questInfo, evtRef, nonMulti = null) {
       null,
       custAtr
     )
-    : createEle('input', null, ['quest-marker', 'info-marker'], null, custAtr);
+    : createEle('input', null, ['quest-marker', 'info-marker', 'hidden-marker'], null, custAtr);
   if (isMulti) menuMarker.addEventListener('click', showMultiQuest);
   return menuMarker;
 }
 
 function genMenuRegNm(questInfo) {
-  return createEle('span', `${questInfo.location} :`, 'multi-rname');
+  return createEle('span', `${questInfo.location || questInfo.region_name} :`, 'multi-rname');
 }
 
 function genMenuName(questInfo) {
@@ -244,12 +244,14 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt =
   const multiMode = mode === 'multi';
   const noReg = mode === 'noreg' || mode === 'sec';
   const finMode = mode === 'marked';
-  const dataId = questInfo.id.toString(10);
-  const multiIdRef = contxtRef.createId(dataId, 'multi'); // attached the id even if not multi
-  const questIdRef = contxtRef.createId(dataId, 'gen');
+  const dataId = questInfo.id;
+  const infoReg = 'region_id' in questInfo ? questInfo.region_id : null;
+  const qrStr = `q${dataId}r${infoReg}`;
+  const multiIdRef = contxtRef.createId(qrStr, 'multi'); // attached the id even if not multi
+  const questIdRef = contxtRef.createId(qrStr, 'gen');
   const menuData = [
     [
-      genMenuMarker(questInfo, multiIdRef, mode === 'sec' || null), 'marker'
+      genMenuMarker(questInfo, multiIdRef, (mode === 'sec' || multiMode) || null), 'marker'
     ],
     [
       multiMode ? genMenuRegNm(questInfo) : null, 'regname'
@@ -290,7 +292,6 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt =
     { id: questIdRef.getId, class: 'sub-gen' }
   );
   sect.append(menuCont, infoCont.getInfo);
-  const infoReg = 'region_id' in questInfo ? questInfo.region_id : null;
   sect.classList.add('quest-container');
   if (questInfo.is_multi && !multiMode) sect.classList.add('multi-info');
   if (multiMode) sect.classList.add('sub-multi-info');
@@ -435,6 +436,11 @@ class FormattedQuest {
       curContxt = new DataContxt(pContxt, `reg${cContxt}`);
       this.#sect = ['div', null, CgRightSect.questCls];
       this.#restPar = [curContxt, 'sec', false];
+    } else if (typeQ === 'multi') {
+      curContxt = new DataContxt(pContxt, `multiq${cContxt}`);
+      questCls = new DataContxt(curContxt, defInfoCls).newContxt;
+      this.#sect = ['div', null, questCls];
+      this.#restPar = [curContxt, 'multi', true];
     }
   }
 
@@ -451,25 +457,3 @@ class FormattedQuest {
     );
   }
 }
-
-// plan:
-//  blueprint functions -> returns one object for appending
-//  quest data consolidate
-//    menu: one main container and sub-containers
-//      sub-containers contains data identifiers/etc and one child appended from blueprint functions
-
-// parameters:
-//   Object or Primitives?
-//   Using primitives, will make function creating for quest data not like blueprint, because it will depends
-//    in many variables
-
-// changes in event listeners:
-//   showMultiQuest: uses contxt and data-id and note container is not pre-made
-//   questMarking: attached on sect, should check the evt.target.class === 'quest-marker'
-//   displayAffected: uses contxt and data-id
-//   showNotesOverlay:
-//     uses data-id
-//     attached the eventlistener on the parent container
-//       check on the evt.target if has a valid data-notetype
-//     check all child elements with data-notetype*
-//     create note menus based on the retrieve notetype
