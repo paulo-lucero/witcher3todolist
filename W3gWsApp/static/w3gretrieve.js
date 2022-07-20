@@ -66,7 +66,7 @@ async function displayAffected(evt) {
         { cutoff: questId }
       )
     ],
-    'noreg'
+    'aff'
   );
 
   for (const dataNote of dataNotes) {
@@ -217,7 +217,7 @@ async function displayRegionQuests(regID) {
   }
   const regRef = CgRightSect.refs[5];
   const regQuest = new FormattedQuest('reg', regRef, regID);
-  const questCont = genQuestCont(null, 'noreg');
+  const questCont = genQuestCont(null, 'sec');
 
   for (const questInfo of questInfos) {
     const questEle = regQuest.genQuestData(questInfo);
@@ -475,7 +475,7 @@ async function retreiveCrucialData(queryLevel) {
       : CgRightSect.refs[typeData][cateIndx];
     let qCont;
     if (!(typeRef in qConts)) {
-      qCont = genQuestCont(null, 'noreg');
+      qCont = genQuestCont(null, 'cruc');
       qConts[typeRef] = qCont;
     } else {
       qCont = qConts[typeRef];

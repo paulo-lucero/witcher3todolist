@@ -53,10 +53,10 @@ def crucial_quests_info(level_info):
     click.echo(f'Retrieving crucial Quest Data - Queried Level: {level_info}')
 
     cur_db.execute(w3gdbhandl.gen_query_cmd(
-      'notes',
+      'multi',
       select=['all_quests.category_id', 'all_quests.undone_count AS quest_count'],
       where=['all_quests.req_level <= ?'],
-      af_wh=['ORDER BY all_quests.req_level ASC']
+      af_wh=['GROUP BY all_quests.id', 'ORDER BY all_quests.req_level ASC']
     ), (level_info, ))
 
     # old - using quest_consoData() : response time -> 9 ms
@@ -71,10 +71,10 @@ def affected_info(id_info):
     click.echo(f'Retrieving Affected Quest/s Data - Cutoff ID: {id_info}')
 
     cur_db.execute(w3gdbhandl.gen_query_cmd(
-      'notes',
+      'multi',
       select=['all_quests.undone_count AS quest_count'],
       where=['all_quests.cutoff = ?'],
-      af_wh=['ORDER BY all_quests.req_level NULLS FIRST, all_quests.req_level ASC']
+      af_wh=['GROUP BY all_quests.id', 'ORDER BY all_quests.req_level NULLS FIRST, all_quests.req_level ASC']
     ), (id_info, ))
 
     return jsonify(cur_db.fetchall())

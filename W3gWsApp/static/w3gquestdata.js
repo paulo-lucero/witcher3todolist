@@ -88,8 +88,8 @@ function toggleQuestType(menuCont, excl) {
 }
 
 // quest data generation blueprints
-function genMenuMarker(questInfo, evtRef, nonMulti = null) {
-  const isMulti = (nonMulti === null || !nonMulti) &&
+function genMenuMarker(questInfo, evtRef, allowMulti = true) {
+  const isMulti = allowMulti &&
     'quest_count' in questInfo &&
     questInfo.quest_count > 1;
   const custAtr = Object.assign(
@@ -217,8 +217,8 @@ function genMenuRegion(questInfo) {
 }
 
 // filter generation
-function genMarkerFilt(menuInfo, questInfo, genMultiFilt) {
-  if (questInfo.is_multi && genMultiFilt) {
+function genMarkerFilt(menuInfo, questInfo) {
+  if ('is_multi' in questInfo && questInfo.is_multi) {
     const isMulti = 'quest_count' in questInfo && questInfo.quest_count > 1;
     const mfilt = isMulti
       ? { done: null }
@@ -237,13 +237,16 @@ function genMarkerFilt(menuInfo, questInfo, genMultiFilt) {
  * @param {Node|Element|HTMLElement} sect main container element of all quest data
  * @param {JSON} questInfo querried data in json format
  * @param {DataContxt} contxtRef DataContxt obj
- * @param {string} mode could be 'all', 'noreg', 'sec' and 'multi'
+ * @param {string} mode could be 'main', 'sec', 'aff', 'cruc', 'multi' and 'marked'
  * @returns {Node|Element|HTMLElement}
  */
-function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt = true, forceMultiInfo = false) {
-  const multiMode = mode === 'multi';
-  const noReg = mode === 'noreg' || mode === 'sec';
-  const finMode = mode === 'marked';
+function consoQueryData(sect, questInfo, contxtRef, mode = 'main') {
+  const mainMode = !!(mode.match(/main/));
+  const multiMode = !!(mode.match(/multi/));
+  const allowMulti = !!(mode.match(/main|aff|cruc/));
+  const allowNotes = !!(mode.match(/sec|aff|cruc/)) || mainMode;
+  const isMultiInfo = allowMulti && questInfo.is_multi;
+
   const dataId = questInfo.id;
   const infoReg = 'region_id' in questInfo ? questInfo.region_id : null;
   const qrStr = `q${dataId}r${infoReg}`;
@@ -251,7 +254,7 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt =
   const questIdRef = contxtRef.createId(qrStr, 'gen');
   const menuData = [
     [
-      genMenuMarker(questInfo, multiIdRef, (mode === 'sec' || multiMode) || null), 'marker'
+      genMenuMarker(questInfo, multiIdRef, allowMulti), 'marker'
     ],
     [
       multiMode ? genMenuRegNm(questInfo) : null, 'regname'
@@ -260,16 +263,16 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt =
       genMenuName(questInfo), 'questname'
     ],
     [
-      !multiMode && !finMode ? genMenuLvl(questInfo) : null, 'lvl'
+      allowNotes ? genMenuLvl(questInfo) : null, 'lvl'
     ],
     [
-      !multiMode && !finMode ? genMenuCut(questInfo, questIdRef) : null, 'cut'
+      allowNotes ? genMenuCut(questInfo, questIdRef) : null, 'cut'
     ],
     [
-      !multiMode && !finMode ? genMenuNote(questInfo) : null, 'note'
+      allowNotes ? genMenuNote(questInfo) : null, 'note'
     ],
     [
-      !multiMode && !finMode && !noReg ? genMenuRegion(questInfo) : null, 'reg'
+      mainMode ? genMenuRegion(questInfo) : null, 'reg'
     ]
   ];
   const menuCont = createEle('div', null, 'menu-cont');
@@ -281,8 +284,8 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt =
         menuInfo,
         { cutoff: questInfo.id }
       );
-    } else if (type === 'marker' && !multiMode) {
-      genMarkerFilt(menuInfo, questInfo, genMultiFilt);
+    } else if (type === 'marker' && allowMulti) {
+      genMarkerFilt(menuInfo, questInfo);
     }
     menuCont.appendChild(menuInfo);
   }
@@ -293,14 +296,13 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'all', genMultiFilt =
   );
   sect.append(menuCont, infoCont.getInfo);
   sect.classList.add('quest-container');
-  if (questInfo.is_multi && !multiMode) sect.classList.add('multi-info');
+  if (isMultiInfo) sect.classList.add('multi-info');
   if (multiMode) sect.classList.add('sub-multi-info');
-  sect.dataset.info = `${dataId}#${forceMultiInfo && questInfo.is_multi ? 1 : infoReg}#${questInfo.req_level}`;
+  sect.dataset.info = `${dataId}#${isMultiInfo && questInfo.quest_count > 1 ? 1 : infoReg}#${questInfo.req_level}`;
   sect.addEventListener('mouseenter', inputVisibility);
   sect.addEventListener('mouseleave', inputVisibility);
   sect.addEventListener('click', questMarking);
   return sect;
-  // attached the questMarking on the sect
 }
 
 function genNoteHeader(headersData) {
@@ -319,17 +321,17 @@ function genNoteHeader(headersData) {
 }
 
 function questHeaderAry(mode = 'all') {
-  const finMode = mode === 'marked';
-  const noReg = mode === 'noreg' || mode === 'sec';
+  const mainMode = !!(mode.match(/main/));
+  const allowNotes = !!(mode.match(/sec|aff|cruc/)) || mainMode;
+  const multiMode = !!(mode.match(/multi/));
+
   const headersData = [
-    mode === 'multi' ? ['headers-regname', 'Region Name'] : null,
+    multiMode ? ['headers-regname', 'Region Name'] : null,
     ['headers-questname', 'Quest Name'],
-    mode !== 'multi' && !finMode ? ['headers-questlvl', 'Level'] : null,
-    mode !== 'multi' && !finMode ? ['headers-affected', 'Affected'] : null,
-    mode !== 'multi' && !finMode ? ['headers-notes', 'Notes'] : null,
-    mode !== 'multi' && !finMode && !noReg
-      ? ['headers-regquest', 'Reqion Quests']
-      : null
+    allowNotes ? ['headers-questlvl', 'Level'] : null,
+    allowNotes ? ['headers-affected', 'Affected'] : null,
+    allowNotes ? ['headers-notes', 'Notes'] : null,
+    mainMode ? ['headers-regquest', 'Reqion Quests'] : null
   ];
 
   return headersData;
@@ -344,7 +346,7 @@ function questHeaderAry(mode = 'all') {
  * @param {String} mode 'all', 'multi' or 'noreg'
  * @returns {QuestCont}
  */
-function displayQuestData(contAttr, eleType, infosData, contxtRef, mode = 'all') {
+function displayQuestData(contAttr, eleType, infosData, contxtRef, mode = 'main') {
   // if infoCont is a function, infoData will be passed to it and it should return an element where the infoData will be appended
 
   let questObj;
@@ -422,25 +424,25 @@ class FormattedQuest {
       curContxt = new DataContxt(pContxt, `cut${cContxt}`);
       questCls = new DataContxt(curContxt, defInfoCls).newContxt;
       this.#sect = ['div', null, questCls];
-      this.#restPar = [curContxt, 'noreg', true];
+      this.#restPar = [curContxt, 'aff'];
     } else if (typeQ === 'sec') {
       curContxt = new DataContxt(pContxt, `regid${cContxt}`);
       questCls = new DataContxt(curContxt, defInfoCls).newContxt;
       this.#sect = ['div', null, questCls];
-      this.#restPar = [curContxt, 'sec', false];
+      this.#restPar = [curContxt, 'sec'];
     } else if (typeQ === 'cruc') {
       curContxt = new DataContxt(pContxt, `lvl${cContxt}`);
       this.#sect = ['div', null, CgRightSect.questCls];
-      this.#restPar = [curContxt, 'noreg', true];
+      this.#restPar = [curContxt, 'cruc'];
     } else if (typeQ === 'reg') {
       curContxt = new DataContxt(pContxt, `reg${cContxt}`);
       this.#sect = ['div', null, CgRightSect.questCls];
-      this.#restPar = [curContxt, 'sec', false];
+      this.#restPar = [curContxt, 'sec'];
     } else if (typeQ === 'multi') {
       curContxt = new DataContxt(pContxt, `multiq${cContxt}`);
       questCls = new DataContxt(curContxt, defInfoCls).newContxt;
       this.#sect = ['div', null, questCls];
-      this.#restPar = [curContxt, 'multi', true];
+      this.#restPar = [curContxt, 'multi'];
     }
   }
 
@@ -448,12 +450,11 @@ class FormattedQuest {
     return this.#sect[2];
   }
 
-  genQuestData(questInfo, forceMultiInfo = false) {
+  genQuestData(questInfo) {
     return consoQueryData(
       createEle(...this.#sect),
       questInfo,
-      ...this.#restPar,
-      forceMultiInfo
+      ...this.#restPar
     );
   }
 }

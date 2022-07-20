@@ -85,6 +85,7 @@ Updater.addInfoUpdater(
    */
   function(reslt) {
     const multiMarkers = reslt.parsed;
+    if (!multiMarkers.hasKeys(['done', 'quest']) && !multiMarkers.hasKeys(['undone', 'quest'])) return;
     for (const questInfo of reslt.result) {
       const multis = multiMarkers.getEleAll({ done: null, quest: questInfo.id });
       const dones = multiMarkers.getEleAll({ undone: null, quest: questInfo.id });
@@ -129,6 +130,7 @@ Updater.addInfoUpdater(
    */
   function(reslt) {
     const eleData = reslt.parsed;
+    if (!eleData.hasKeys('cutoff')) return;
     for (const questInfo of reslt.result) {
       const menuConts = eleData.getEleAll('cutoff', questInfo.id);
       if (!menuConts || menuConts.length === 0) continue;
@@ -175,6 +177,7 @@ Updater.addContUpdater(
    */
   function(reslt) {
     const eleData = reslt.parsed;
+    if (!eleData.hasKeys('cutoff')) return;
     for (const questInfo of reslt.result) {
       const cutoffID = questInfo.cutoff;
       if (cutoffID === null) continue;
@@ -199,7 +202,7 @@ Updater.addContUpdater(
           questID
         );
 
-        insertData(cutQuest.genQuestData(questInfo, true), cutCont, 'level');
+        insertData(cutQuest.genQuestData(questInfo), cutCont, 'level');
       }
     }
   }
@@ -213,6 +216,7 @@ Updater.addContUpdater(
    */
   function(reslt) {
     const eleData = reslt.parsed;
+    if (!eleData.hasKeys(['second', 'region'])) return;
     for (const questInfo of reslt.result) {
       const resRegID = questInfo.region_id;
       if (resRegID === 1) continue;
@@ -303,6 +307,7 @@ Updater.addContUpdater(
     const questConts = {};
     for (const questInfo of reslt.result) {
       const questLvl = questInfo.req_level;
+      if (questLvl === null) continue;
       const questCat = questInfo.category_id;
       const crucType = questCat === 4
         ? 1
@@ -325,7 +330,7 @@ Updater.addContUpdater(
         let contEle = document.getElementById(subID).firstElementChild;
         contEle = isEle(contEle)
           ? new QuestCont(contEle)
-          : genQuestCont(null, 'noreg');
+          : genQuestCont(null, 'cruc');
         questConts[subID] = contEle;
       }
 
@@ -334,7 +339,7 @@ Updater.addContUpdater(
 
       insertData(
         new FormattedQuest('cruc', subID, CgRightSect.recentLvl)
-          .genQuestData(questInfo, true),
+          .genQuestData(questInfo),
         qContObj.body,
         'level'
       );
@@ -369,7 +374,7 @@ Updater.addContUpdater(
     if (!regCont || regCont.length === 0 || regCont.every(ele => ele !== infoEle)) return;
 
     let questCont = document.getElementById(subID).firstElementChild;
-    questCont = (questCont && new QuestCont(questCont)) || genQuestCont(null, 'noreg');
+    questCont = (questCont && new QuestCont(questCont)) || genQuestCont(null, 'sec');
     for (const questInfo of reslt.result) {
       const questReg = questInfo.region_id;
       if (questReg !== curReg) continue;
@@ -397,6 +402,7 @@ Updater.addContUpdater(
    */
   function(reslt) {
     const eleData = reslt.parsed;
+    if (!eleData.hasKeys('quest')) return;
 
     for (const questInfo of reslt.result) {
       const questID = questInfo.id;
@@ -438,6 +444,7 @@ Updater.addOthrUpdater(
    */
   function(reslt) {
     const eleData = reslt.parsed;
+    if (!eleData.hasKeys('sreg')) return;
 
     for (const regData of reslt.result) {
       const questCount = regData.side_count;

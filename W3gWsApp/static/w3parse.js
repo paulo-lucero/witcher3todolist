@@ -4,7 +4,7 @@
 
 // test: https://jsfiddle.net/e1aLbgv7/
 class EleData {
-  static #checkKey(dt, identf) {
+  static #checkValue(dt, identf) {
     return Object.keys(identf).every(
       ky => identf[ky] === dt[ky]
     );
@@ -111,7 +111,7 @@ class EleData {
   getIdx(ky, vl) {
     return isObj(ky)
       ? this.parsed.findIndex(
-        dt => EleData.#checkKey(dt, ky)
+        dt => EleData.#checkValue(dt, ky)
       )
       : this.parsed.findIndex(dt => dt[ky] === vl);
   }
@@ -125,6 +125,22 @@ class EleData {
   getEle(ky, vl) {
     const allEles = this.getEleAll(ky, vl);
     return (allEles !== null) ? allEles[0] : allEles;
+  }
+
+  /**
+   *
+   * @param {String|[String]} kys keys
+   */
+  hasKeys(kys) {
+    kys = Array.isArray(kys) ? kys : [kys];
+    const checkKeys = ky => kys.includes(ky);
+    return this.parsed.findIndex(
+      dt => {
+        const dtKeys = Object.keys(dt);
+        return dtKeys.length === kys.length &&
+          dtKeys.every(checkKeys);
+      }
+    ) !== -1;
   }
 }
 
