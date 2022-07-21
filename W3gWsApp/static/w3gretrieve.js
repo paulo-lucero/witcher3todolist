@@ -796,6 +796,7 @@ function finishedOverlay(evt) {
  * @param {Event} evt
  */
 async function buttonsMangr(evt) {
+  if (!allowEvt('allow-select')) return;
   const curTag = evt.currentTarget;
   const targClss = evt.target.classList;
   if (targClss.contains('finished')) {

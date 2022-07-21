@@ -1,17 +1,25 @@
+:root {
+  --heading-px: 21px;
+  --backg-color: #EEEEEE;
+}
+
 body {
   margin: 0px;
-  background-color: #EEEEEE;
+  background-color: var(--backg-color);
 }
 
 #w3g-body {
-  padding: 8px;
+  padding: 0 8px 8px;
 }
 
 #quest-query {
   display: flex;
   justify-content: space-between;
-  position: relative;
-  margin-bottom: .3vw;
+  position: sticky;
+  top: 0;
+  padding: 8px 0;
+  z-index: 1;
+  background-color: var(--backg-color);
 }
 
 #quest-query-left > * {
@@ -25,12 +33,6 @@ body {
 .button:hover {
   cursor: pointer;
   font-weight: 600;
-}
-
-#quest-query input {
-  width: 20vw;
-  border: 3px solid black;
-  border-radius: 5px;
 }
 
 #level-query {
@@ -79,6 +81,10 @@ body {
 
 #input-arrowdown:hover {
   border-top-color: yellow;
+}
+
+#ave-side-cont {
+  margin-left: 20px;
 }
 
 #page-section {
@@ -231,10 +237,6 @@ body.in-query * {
 
 .cont-status-close {
   display: none;
-}
-
-:root {
-  --heading-px: 21px;
 }
 
 .quest-container .marker {

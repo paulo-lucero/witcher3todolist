@@ -154,18 +154,32 @@ def quest_done():
         # query of affected quests
         for fil_type in fils_basis:
             fil_basis = fils_basis[fil_type]
-            if fil_basis:
-                fil_cmd = None
-                try:
+            if not fil_basis:
+                continue
+
+            fil_cmd = None
+            try:
+                if fil_type == 'othr':
+                    othr_res = {}
+                    for othr_type in fil_basis:
+                        fil_cmd = w3gdbhandl.gen_filt_cmd(fil_basis, othr_type)
+                        cur_db.execute(fil_cmd)
+                        result_query = cur_db.fetchall()
+                        othr_res[othr_type] = result_query if len(result_query) > 0 else None
+                        '''Logging'''
+                        w3gdbhandl.debugdb_logfil(conn_db, trxn_c, othr_type, fil_basis, fil_cmd)
+                    quest_aff[fil_type] = othr_res
+                else:
                     fil_cmd = w3gdbhandl.gen_filt_cmd(fil_basis, fil_type)
+                    # err_r = {'type': fil_type, 'basis': fil_basis}
                     cur_db.execute(fil_cmd)
                     result_query = cur_db.fetchall()
                     quest_aff[fil_type] = result_query if len(result_query) > 0 else None
                     '''Logging'''
                     w3gdbhandl.debugdb_logfil(conn_db, trxn_c, fil_type, fil_basis, fil_cmd)
-                except:
-                    err_r = traceback.format_exc()
-                    sql_cmd = fil_cmd
+            except:
+                err_r = traceback.format_exc()
+                sql_cmd = fil_cmd
 
         # separate query of count region and secondary quest
         #  may add filter basis for count?, "data-count-filt"

@@ -849,7 +849,8 @@ class Updater {
   };
 
   static #othrFiltSpec = {
-    sreg: [1, 2, 3, 4, 5, 6, 7]
+    sreg: [1, 2, 3, 4, 5, 6, 7],
+    ave: null
   };
 
   /**
@@ -883,9 +884,16 @@ class Updater {
   /**
    *
    * @param {[Object]} filts
+   * @param {Boolean} keysOnly
    */
-  static #consoFilt(filts) {
+  static #consoFilt(filts, keysOnly = false) {
     const filTypes = new Map();
+
+    if (keysOnly) {
+      return filts.map(
+        filt => Object.keys(filt).join('')
+      );
+    }
 
     for (const filt of filts) {
       const strType = Object.keys(filt).join('-');
@@ -998,6 +1006,11 @@ class Updater {
     Updater.#contUpdater.add(func);
   }
 
+  /**
+   * keys are concatenated, values doesn't affect the WHERE clause, "Other" WHERE clause mostly based on the "changes" table
+   * @param {Function} func
+   * @returns
+   */
   static addOthrUpdater(func) {
     if (typeof func !== 'function') return;
     Updater.#othrUpdater.add(func);
@@ -1015,7 +1028,7 @@ class Updater {
     const othrEles = new EleData('[data-othrfilt]');
 
     const infoFilt = Updater.#consoFilt(infoEles.parsed);
-    const othrFilt = Updater.#consoFilt(othrEles.parsed);
+    const othrFilt = Updater.#consoFilt(othrEles.parsed, true);
     const contFilt = !(Updater.isDone)
       ? Updater.#consoFilt(contEles.parsed)
       : null;
@@ -1040,14 +1053,8 @@ class Updater {
     );
 
     if (updResult.err_r) {
-      throw new Error(
-        'Error in filter querying',
-        {
-          cause: {
-            trace: updResult.err_r,
-            sql: updResult.sql_cmd
-          }
-        });
+      // throw new Error(`${updResult.err_r.type}\n${JSON.stringify(updResult.err_r.basis)}\n${updResult.sql_cmd}`);
+      throw new Error(`${JSON.stringify(updResult.err_r)}\n${updResult.sql_cmd}`);
     } else if (updResult.modified !== parsedInfos.length) {
       throw new Error(
         'Number of modified row and selected info aren\'t equal',

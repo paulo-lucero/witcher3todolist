@@ -216,6 +216,28 @@ class CgLSect {
   static menuCls = 'lsect-menu';
   static mainId = 'lsect-menu-main';
   static secId = 'lsect-menu-sec';
+  static curCounts = null;
+}
+
+function aveSideQ(infoCountr) {
+  const countr = document.getElementById('ave-side-cont');
+  const curQCounts = CgLSect.curCounts;
+
+  removeData(countr);
+
+  Updater.genOthrFilt(countr, { ave: null });
+
+  const curAve = curQCounts == null || curQCounts.main_count !== infoCountr.main_count
+    ? Math.ceil(infoCountr.second_count / infoCountr.main_count)
+    : curQCounts.curAve - (curQCounts.second_count - infoCountr.second_count);
+
+  infoCountr.curAve = curAve;
+
+  CgLSect.curCounts = infoCountr;
+
+  countr.appendChild(
+    document.createTextNode(curAve)
+  );
 }
 
 async function createLSect() {
@@ -250,6 +272,8 @@ async function createLSect() {
   questSect.appendChild(CgLSect.infoObj.getInfo);
 
   const questsStatus = await queryInfo('/query/check-quests-info');
+
+  aveSideQ(questsStatus);
 
   const lSectEvt = {
     currentTarget: document.getElementById('lsect-menu-cont'),

@@ -284,13 +284,14 @@ def gen_filter(fils, mode='done'):
             'cutoff': 'all_quests.cutoff =?',
             'quest': 'changes_quest.quest_id =?',
             'cruc': '(all_quests.req_level <= (? - 2 ) OR (all_quests.category_id = 4 AND all_quests.req_level <=?))'
-        },
-        'othr': {
-            'sreg': 'region.id IN (SELECT changes_quest.region_id FROM changes_quest)'
         }
     }
 
-    val_def = val_defs[mode]
+    val_def = val_defs.get(mode)
+    
+    if val_def == None:
+        return val_def
+
     fils_whr = []
     septr = ' AND '
 
@@ -322,8 +323,13 @@ def gen_filt_cmd(fil_basis, fil_type):
     if fil_type == 'info':
         styl = 'mall'
         af_whr = 'GROUP BY all_quests.id'
-    elif fil_type == 'othr':
+    elif fil_type == 'sreg':
         selct = 'region.id, region.region_name, region.side_count'
         frm = 'region'
+        whr = 'region.id IN (SELECT changes_quest.region_id FROM changes_quest)'
+    elif fil_type == 'ave':
+        selct = 'category.cat_count AS main_count, (SELECT SUM(category.cat_count) FROM category WHERE category.id != 1) AS second_count'
+        frm = 'category'
+        whr = 'category.id = 1'
 
     return gen_query_cmd(styl, select=selct, _from=frm, where=whr, af_wh=af_whr)

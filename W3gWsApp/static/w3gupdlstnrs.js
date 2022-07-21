@@ -19,7 +19,8 @@
     QuestCont,
     CgOverlay,
     CgLSect,
-    genRegCountEle
+    genRegCountEle,
+    aveSideQ
 */
 
 function toggleRemove(dataCont) {
@@ -62,7 +63,10 @@ Updater.addBeforeFunc(
         if (addtMarked === undefined) {
           throw new Error('Multi Info can\'t be undefined');
         }
-        toggleRemove(addtMarked);
+        addtMarked = document.querySelectorAll(
+          `.multi-info[data-info="${addtMarked.dataset.info}"]`
+        );
+        addtMarked.forEach(toggleRemove);
       } else if (unMarked.length === 1) {
         addtMarked = unMarked;
         addtMarked.forEach(
@@ -446,7 +450,7 @@ Updater.addOthrUpdater(
     const eleData = reslt.parsed;
     if (!eleData.hasKeys('sreg')) return;
 
-    for (const regData of reslt.result) {
+    for (const regData of reslt.result.sreg) {
       const questCount = regData.side_count;
       const regID = regData.id;
 
@@ -460,4 +464,20 @@ Updater.addOthrUpdater(
   }
 );
 
-// select mode
+// ave-counter
+Updater.addOthrUpdater(
+  /**
+   *
+   * @param {{parsed:EleData, result:Any}} reslt
+   */
+  function(reslt) {
+    const eleData = reslt.parsed;
+    if (!eleData.hasKeys('ave')) return;
+    const questCount = reslt.result.ave[0];
+
+    const aveEles = eleData.getEleAll('ave', null);
+    if (!aveEles || aveEles.length === 0) return;
+
+    aveSideQ(questCount);
+  }
+);
