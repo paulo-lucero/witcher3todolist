@@ -1,5 +1,6 @@
-async function getPragmaSettings(displayAll=false) {
-  let defPragmaSets = {
+/* global queryInfo */
+async function getPragmaSettings(displayAll = false) {
+  const defPragmaSets = {
     // 'n/a' values means default is not applicable
     // re-visit pragmas commands, to evaluate whether to include in execution
     analysis_limit: 0,
@@ -21,7 +22,7 @@ async function getPragmaSettings(displayAll=false) {
     default_cache_size: -2000,
     defer_foreign_keys: 0,
     empty_result_callbacks: 0,
-    encoding: "UTF-8",
+    encoding: 'UTF-8',
     foreign_key_check: null,
     foreign_key_list: null,
     foreign_keys: 0,
@@ -35,11 +36,11 @@ async function getPragmaSettings(displayAll=false) {
     index_info: null,
     index_list: null,
     index_xinfo: null,
-    integrity_check: "ok",
-    journal_mode: "delete",
+    integrity_check: 'ok',
+    journal_mode: 'delete',
     journal_size_limit: -1,
     legacy_alter_table: 0,
-    locking_mode: "normal",
+    locking_mode: 'normal',
     max_page_count: 1073741823,
     mmap_size: 0,
     module_list: undefined, // = "json_tree"
@@ -48,7 +49,7 @@ async function getPragmaSettings(displayAll=false) {
     page_size: 4096,
     pragma_list: undefined,
     query_only: 0,
-    quick_check: "ok",
+    quick_check: 'ok',
     read_uncommitted: 0,
     recursive_triggers: 0,
     reverse_unordered_selects: 0,
@@ -81,19 +82,19 @@ async function getPragmaSettings(displayAll=false) {
     // -soft_heap_limit : queriable : ok
     // -wal_checkpoint : effect-if-journal_mode=WAL : ok
     // -writable_schema : might-insignificant : ok
-  }
-  let pragmaSettings = await queryInfo('/testingenv/pragma-settings');
+  };
+  const pragmaSettings = await queryInfo('/testingenv/pragma-settings');
 
-  let resultCheck = {
+  const resultCheck = {
     notFound: [],
     notSame: {},
     allSame: null
   };
 
-  for (let pragmaSetting in pragmaSettings) {
+  for (const pragmaSetting in pragmaSettings) {
     if (pragmaSetting in defPragmaSets) {
-      let defValue = defPragmaSets[pragmaSetting];
-      let curValue = pragmaSettings[pragmaSetting];
+      const defValue = defPragmaSets[pragmaSetting];
+      const curValue = pragmaSettings[pragmaSetting];
       if (curValue !== defValue) {
         resultCheck.notSame[pragmaSetting] = { defaultValue: defValue, setValue: curValue };
       }
@@ -118,7 +119,7 @@ async function getPragmaSettings(displayAll=false) {
 }
 
 async function testTem() {
-  let testResult = await queryInfo('/testingenv/testbefreq', {
+  const testResult = await queryInfo('/testingenv/testbefreq', {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json'

@@ -130,14 +130,14 @@ def quest_done():
     modif_count = 0
     err_r = None
     sql_cmd = None
-    trxn_c = w3gdbhandl.gen_trxnid()
+    # trxn_c = w3gdbhandl.gen_trxnid()
 
     if json_data['done'] or json_data['redo']:
         # insert quest_id and region_id in a temporary db, that have status changed
         # Need to store the quest_id and region_id in a temp db, because I can't query by set of quest_id and region_id
         no_of_changes = w3gdbhandl.create_tempdb(cur_db, quest_data, json_data['redo'])
-        '''Logging'''
-        w3gdbhandl.debugdb_copy_changes(conn_db)
+        # '''Logging'''
+        # w3gdbhandl.debugdb_copy_changes(conn_db)
 
         # done or redo
         cur_db.execute(f'''
@@ -166,17 +166,16 @@ def quest_done():
                         cur_db.execute(fil_cmd)
                         result_query = cur_db.fetchall()
                         othr_res[othr_type] = result_query if len(result_query) > 0 else None
-                        '''Logging'''
-                        w3gdbhandl.debugdb_logfil(conn_db, trxn_c, othr_type, fil_basis, fil_cmd)
+                        # '''Logging'''
+                        # w3gdbhandl.debugdb_logfil(conn_db, trxn_c, othr_type, fil_basis, fil_cmd)
                     quest_aff[fil_type] = othr_res
                 else:
                     fil_cmd = w3gdbhandl.gen_filt_cmd(fil_basis, fil_type)
-                    # err_r = {'type': fil_type, 'basis': fil_basis}
                     cur_db.execute(fil_cmd)
                     result_query = cur_db.fetchall()
                     quest_aff[fil_type] = result_query if len(result_query) > 0 else None
-                    '''Logging'''
-                    w3gdbhandl.debugdb_logfil(conn_db, trxn_c, fil_type, fil_basis, fil_cmd)
+                    # '''Logging'''
+                    # w3gdbhandl.debugdb_logfil(conn_db, trxn_c, fil_type, fil_basis, fil_cmd)
             except:
                 err_r = traceback.format_exc()
                 sql_cmd = fil_cmd
@@ -195,8 +194,8 @@ def quest_done():
             af_wh=['ORDER BY quest_region.region_id ASC, quest_region.date_change DESC']
         )
         cur_db.execute(q_cmd)
-        '''Logging'''
-        w3gdbhandl.debugdb_logfil(conn_db, trxn_c, 'marked', None, q_cmd)
+        # '''Logging'''
+        # w3gdbhandl.debugdb_logfil(conn_db, trxn_c, 'marked', None, q_cmd)
         return jsonify(cur_db.fetchall())
 
     elif json_data['note']:

@@ -160,6 +160,86 @@ function retreiveNull(mesg = null) {
   return createEle('div', mesgNull, 'retr-null');
 }
 
+function isObj(obj) {
+  return obj !== null && !Array.isArray(obj) && typeof obj === 'object';
+}
+
+/**
+ *
+ * @param {Event} evt
+ * preferreable setup:
+ *  create function for the menu container of menu elements, this function called the isSameRqt()
+ *  then function could have multiple sub-instructions or functions for opening
+ */
+function isSameRqt(evt) {
+  const sameRqt = false;
+  const openCls = 'menu-opened';
+  const recvr = evt.currentTarget;
+  const targ = evt.target;
+  let curOpen = recvr.getElementsByClassName(openCls);
+
+  if (curOpen.length === 0) {
+    targ.classList.toggle(openCls);
+    return sameRqt;
+  } else {
+    curOpen = curOpen[0];
+  }
+
+  if (targ === curOpen) {
+    return !sameRqt;
+  } else {
+    curOpen.classList.toggle(openCls);
+    targ.classList.toggle(openCls);
+    return sameRqt;
+  }
+}
+
+/**
+ *
+ * @param {Element|HTMLElement} ele
+ * @param {{String:Array|String}} obj use array for multiple values, e.g. classes
+ */
+function setAttrs(ele, obj, silent = false) {
+  isEle(ele, '1st argument should be an element');
+  if (!silent && !isObj(obj)) {
+    throw new Error('2nd argument should be an object');
+  }
+  for (const [attr, val] of Object.entries(obj)) {
+    if (attr === 'class') {
+      if (Array.isArray(val)) {
+        ele.classList.add(...val);
+      } else {
+        ele.classList.add(val);
+      }
+    } else {
+      ele.setAttribute(attr, val);
+    }
+  }
+}
+
+/**
+ *
+ * @param {Element|HTMLElement} ele
+ * @param {{String:[String]|null}} obj use array for multiple values, e.g. classes
+ */
+function rmvAttrs(ele, obj, silent = false) {
+  isEle(ele, '1st argument should be an element');
+  if (!silent && !isObj(obj)) {
+    throw new Error('2nd argument should be an object');
+  }
+  for (const [attr, val] of Object.entries(obj)) {
+    if (attr === 'class') {
+      if (Array.isArray(val)) {
+        ele.classList.remove(...val);
+      } else {
+        ele.classList.remove(val);
+      }
+    } else {
+      ele.removeAttribute(attr);
+    }
+  }
+}
+
 /**
  *
  * @param {any|Element|HTMLElement|[any|Element|HTMLElement]} ele
@@ -184,6 +264,82 @@ function isEles(...args) {
     res = res && isEle(obj, msg + ' should an element');
   }
   return res;
+}
+
+class ParentE {
+  /**
+   * https://jsfiddle.net/yc540mp6/
+   * @param {Element|HTMLElement} ele
+   * @param {Function} func should return Boolean
+   * @param {Boolean} incl should the last element be included when the func returns false
+   */
+  constructor(ele, func, incl = false, debg = false) {
+    isEle(ele, '1st Arguement should be an element');
+    if (typeof func !== 'function') {
+      throw new Error('2nd Arguement should be an function');
+    }
+    this.ele = ele;
+    this.func = func;
+    this.incl = incl;
+    this.isDone = false;
+    this.debug = debg;
+  }
+
+  next() {
+    if (this.debug) {
+      console.log(this.ele);
+      console.log(this.ele.parentElement);
+    }
+    const parentEle = this.ele.parentElement;
+    const curNext = this.incl && this.isDone
+      ? !this.isDone
+      : this.func(parentEle);
+    const isNext = this.incl && !this.isDone && !curNext
+      ? !curNext
+      : curNext;
+    this.isDone = this.incl && !curNext
+      ? !curNext
+      : this.isDone;
+    if (isNext) {
+      this.ele = parentEle;
+      return { done: false, value: parentEle };
+    } else {
+      return { done: true, value: null };
+    }
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+}
+
+/**
+ *
+ * @param {Element|HTMLElement} ele
+ * @param {*} identf
+ */
+function getParent(ele, identf) {
+  if (!isObj(identf)) {
+    throw new Error('Identifier should be an object');
+  }
+  const eleParents = new ParentE(
+    ele,
+    elet => !!elet
+  );
+
+  let curEle;
+  function checkAttr(attr) {
+    if (attr === 'class') {
+      return curEle.classList.contains(identf[attr]);
+    }
+    return curEle.getAttribute(attr) === identf[attr];
+  }
+
+  const attrs = Object.keys(identf);
+  for (const eleParent of eleParents) {
+    curEle = eleParent;
+    if (attrs.every(checkAttr)) return curEle;
+  }
 }
 
 function hasQuests(ele) {

@@ -23,9 +23,11 @@
     CgOverlay,
     openOverlay,
     Updater,
-    FormattedQuest
+    FormattedQuest,
+    IdRef
  */
 
+// [Affected Quests]
 /**
  *
  * @param {Event} evt
@@ -79,7 +81,9 @@ async function displayAffected(evt) {
     questCont.body
   );
 }
+// [/ Affected Quests]
 
+// [Overlay: Notes]
 async function displayNote(evt) {
   const evtTarg = evt.target;
   const noteType = 'menutype' in evtTarg.dataset
@@ -193,7 +197,9 @@ function showNotesOverlay(evt) {
 
   noteMenus[typeTarg].dispatchEvent(clickEvt);
 }
+// [/ Overlay: Notes]
 
+// [Region Based Sec-Quest Query]
 async function displayRegionQuests(regID) {
   CgOverlay.curRegID = regID;
   InfoCont.removeData(
@@ -305,7 +311,9 @@ function showDataConfirm(evt) {
     confirmCont.body
   );
 }
-/* global IdRef */
+// [/Region Based Sec-Quest Query]
+
+// [Sec-Quest Query]
 async function displayRegionSect(evt) {
   const regMenu = evt.currentTarget;
   const questCount = parseInt(regMenu.dataset.regcount, 10);
@@ -354,7 +362,9 @@ async function displayRegionSect(evt) {
     regQuestCont.body
   );
 }
+// [/Sec-Quest Query]
 
+// [Left Section]
 function genRegCountEle(regCount, regID) {
   return createEle(
     'span',
@@ -436,7 +446,9 @@ async function questSectMenu(evt) {
     );
   }
 }
+// [/Left Section]
 
+// [Crucial Quests Query]
 async function retreiveCrucialData(queryLevel) {
   const infoQuests = document.getElementsByClassName(CgRightSect.questCls);
   InfoCont.removeData(infoQuests);
@@ -528,7 +540,9 @@ function inputLvlQuery(evt) {
     retreiveCrucialData(queryValue);
   }
 }
+// [/Crucial Quests Query]
 
+// [Multi-Region Quests Query]
 async function showMultiQuest(evt) {
   if (!allowEvt()) return;
   const curTarg = evt.currentTarget;
@@ -571,7 +585,9 @@ async function showMultiQuest(evt) {
     questCont.body
   );
 }
+// [/Multi-Region Quests Query]
 
+// [Quest Marker]
 function inputVisibility(evt) {
   const isRedoInfo = evt.currentTarget.classList.contains('finished-info');
   if ((CgOverlay.overlayOn && !isRedoInfo) || Updater.selectOn) return;
@@ -619,7 +635,9 @@ async function questMarking(evt) {
   dataConts.forEach(questSelection);
   if (!Updater.selectOn) await Updater.update();
 }
+// [/Quest Marker]
 
+// [Finished Quests]
 /**
  *
  * @param {Event} evt
@@ -790,6 +808,7 @@ function finishedOverlay(evt) {
   const firstEvt = new Event('click', { bubbles: true });
   doneMenus.querySelector(':first-child.finished-bttns').dispatchEvent(firstEvt);
 }
+// [/Finished Quests]
 
 /**
  *
