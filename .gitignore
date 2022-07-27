@@ -7,5 +7,6 @@
 __pycache__/
 tests/
 devt/
+W3gWsApp/static/*.js
 .venv/
 node_modules/
