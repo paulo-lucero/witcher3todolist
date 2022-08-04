@@ -1,4 +1,4 @@
-/* global queryInfo */
+import { queryInfo } from './w3gdefs';
 async function getPragmaSettings(displayAll = false) {
   const defPragmaSets = {
     // 'n/a' values means default is not applicable

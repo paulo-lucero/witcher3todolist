@@ -1,12 +1,6 @@
-/* global
-    InfoCont,
-    DataContxt,
-    questSectMenu,
-    inputLvlQuery,
-    retreiveCrucialData,
-    Updater,
-    IdRef
- */
+import { InfoCont, Updater } from './w3continfo';
+import { questSectMenu, inputLvlQuery, retreiveCrucialData } from './w3gevtltnrs';
+import { DataContxt, IdRef } from './w3gcontxt';
 
 // const sTime = Date.now();
 const queryData = {
@@ -651,3 +645,34 @@ function finishedNoData() {
     retreiveNull()
   );
 }
+
+export {
+  isEle,
+  createEle,
+  createUrl,
+  CgRightSect,
+  isObj,
+  getAllQuests,
+  removeData,
+  isEles,
+  queryInfo,
+  crucNoData,
+  mainNoData,
+  finishedNoData,
+  setAttrs,
+  rmvAttrs,
+  ParentE,
+  getQuest,
+  CgOverlay,
+  CgLSect,
+  aveSideQ,
+  getParent,
+  inputData,
+  retreiveNull,
+  allowEvt,
+  createRightInfo,
+  isSameRqt,
+  createLSect,
+  setupOverlays,
+  openOverlay
+};

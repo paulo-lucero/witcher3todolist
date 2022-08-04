@@ -1,21 +1,19 @@
-/* global
-    createEle,
-    parsedEle,
-    getAllQuests,
-    isEle,
-    removeData,
-    isEles,
-    parsedAll,
-    queryInfo,
-    EleData,
-    crucNoData,
-    mainNoData,
-    finishedNoData,
-    isObj,
-    setAttrs,
-    rmvAttrs,
-    ParentE
-*/
+import {
+  createEle,
+  getAllQuests,
+  isEle,
+  removeData,
+  isEles,
+  queryInfo,
+  crucNoData,
+  mainNoData,
+  finishedNoData,
+  isObj,
+  setAttrs,
+  rmvAttrs,
+  ParentE
+} from './w3gdefs';
+import { parsedAll, EleData, parsedEle } from './w3parse';
 
 // test: https://jsfiddle.net/q5ufvc32/
 function insertData(qData, contEle, sortBasis, ascS = true) {
@@ -90,7 +88,7 @@ class QuestCont {
       refEle = wrpEle;
     } else {
       refEle = this[refThis];
-    };
+    }
     ele.classList.toggle(wrpCls);
     this[refWrp] = ele;
     const refPar = refEle.parentElement;
@@ -355,7 +353,7 @@ class InfoCont {
     }
     if (ifClose) {
       cont.classList.add(InfoCont.#closeCls);
-    };
+    }
     return ifClose;
   }
 
@@ -955,3 +953,11 @@ class Updater {
     finishedNoData();
   }
 }
+
+export {
+  InfoCont,
+  Updater,
+  QuestCont,
+  insertData,
+  GenFetchInit
+};

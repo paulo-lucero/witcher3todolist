@@ -1,6 +1,4 @@
-/* global
-    isObj
-*/
+import { isObj } from './w3gdefs';
 
 // test: https://jsfiddle.net/e1aLbgv7/
 class EleData {
@@ -151,3 +149,9 @@ function parsedAll() {
 function parsedEle() {
   return parsedAll(...arguments)[0];
 }
+
+export {
+  parsedEle,
+  parsedAll,
+  EleData
+};

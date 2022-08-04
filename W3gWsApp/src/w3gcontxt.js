@@ -1,6 +1,4 @@
-/* global
-    isEle,
-*/
+import { isEle } from './w3gdefs';
 
 class IdRef {
   #eleID;
@@ -186,3 +184,8 @@ class DataContxt {
     return new IdRef(genID);
   }
 }
+
+export {
+  DataContxt,
+  IdRef
+};

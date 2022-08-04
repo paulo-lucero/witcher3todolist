@@ -1,18 +1,15 @@
-/* global
+import {
   inputVisibility,
-  createEle,
-  createUrl,
   displayAffected,
   showNotesOverlay,
   questMarking,
   showMultiQuest,
-  showDataConfirm,
-  InfoCont,
-  QuestCont,
-  CgRightSect,
-  Updater,
-  DataContxt
- */
+  showDataConfirm
+} from './w3gevtltnrs';
+
+import { createEle, createUrl, CgRightSect } from './w3gdefs';
+import { InfoCont, QuestCont, Updater } from './w3continfo';
+import { DataContxt } from './w3gcontxt';
 
 function GenNoteIdentf(qw, em, nt) {
   this.qw = qw;
@@ -458,3 +455,15 @@ class FormattedQuest {
     );
   }
 }
+
+export {
+  genMenuMarker,
+  genMarkerFilt,
+  genMenuCut,
+  toggleQuestType,
+  FormattedQuest,
+  consoQueryData,
+  genQuestCont,
+  displayQuestData,
+  noteObj
+};

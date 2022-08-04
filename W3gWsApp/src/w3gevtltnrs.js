@@ -1,31 +1,26 @@
-/* global
-    displayQuestData,
-    inputData,
-    CgRightSect,
-    createEle,
-    createUrl,
-    retreiveNull,
-    queryInfo,
-    allowEvt,
-    consoQueryData,
-    removeData,
-    GenFetchInit,
-    createRightInfo,
-    genQuestCont,
-    InfoCont,
-    CgLSect,
-    isSameRqt,
-    createLSect,
-    DataContxt,
-    setupOverlays,
-    QuestCont,
-    noteObj,
-    CgOverlay,
-    openOverlay,
-    Updater,
-    FormattedQuest,
-    IdRef
- */
+import {
+  displayQuestData,
+  noteObj,
+  FormattedQuest,
+  consoQueryData,
+  genQuestCont
+} from './w3gquestdata';
+import {
+  inputData,
+  CgRightSect,
+  createEle,
+  createUrl,
+  retreiveNull,
+  queryInfo,
+  allowEvt,
+  removeData,
+  CgLSect,
+  isSameRqt,
+  CgOverlay,
+  openOverlay
+} from './w3gdefs';
+import { GenFetchInit, InfoCont, Updater, QuestCont } from './w3continfo';
+import { DataContxt, IdRef } from './w3gcontxt';
 
 // [Affected Quests]
 /**
@@ -267,7 +262,7 @@ function showDataConfirm(evt) {
   if (openedCruc.length === 0) {
     displayRegionQuests(regID);
     return;
-  };
+  }
 
   const confirmCont = new QuestCont(
     null,
@@ -509,7 +504,7 @@ async function retreiveCrucialData(queryLevel) {
       nullContnt
     );
     return;
-  };
+  }
 
   for (const [idCont, qCont] of qContsData) {
     infoEle.insert(
@@ -859,12 +854,16 @@ async function redoAllQuest() {
   if (!Updater.selectOn) await Updater.update();
 }
 
-async function initGuide() {
-  setupOverlays();
-  await createLSect();
-  await createRightInfo();
-
-  document.getElementById('quest-query-left').addEventListener('click', buttonsMangr);
-}
-
-initGuide();
+export {
+  questSectMenu,
+  inputLvlQuery,
+  retreiveCrucialData,
+  inputVisibility,
+  displayAffected,
+  showNotesOverlay,
+  questMarking,
+  showMultiQuest,
+  showDataConfirm,
+  genRegCountEle,
+  buttonsMangr
+};

@@ -3,10 +3,12 @@
 *.bat
 *.sh
 *note*.txt
+*.code-workspace
 .jshintrc
 __pycache__/
 tests/
 devt/
-W3gWsApp/static/*.js
+W3gWsApp/src-test
+W3gWsApp/static/*.js*
 .venv/
 node_modules/
