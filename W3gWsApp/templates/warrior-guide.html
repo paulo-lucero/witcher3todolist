@@ -33,6 +33,17 @@
         <div id="info-section"></div>
       </div>
     </div>
+    <!-- <div id="test-gen-icons">
+      <input id="test-num-icons" type="number">
+      <select id="test-select-icons" required >
+        <option value="qwt" selected>Card Icon</option>
+        <option value="enm">Enemy Icon</option>
+        <option value="add">Add Icon</option>
+        <option value="note">Note Icon</option>
+      </select>
+      <input id="test-gen-bttn" type="button" value="Generate">
+      <div id="test-gen-results"></div>
+    </div> -->
     {% for jsf in jsfs %}
       <script src="{{ url_for('static', filename=jsf + '.js') }}"></script>
     {% endfor %}

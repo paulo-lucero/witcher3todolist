@@ -21,6 +21,7 @@ import {
 } from './w3gdefs';
 import { GenFetchInit, InfoCont, Updater, QuestCont } from './w3continfo';
 import { DataContxt, IdRef } from './w3gcontxt';
+import { toggleOtherNotes, genNoteItem, openQuestNote } from './w3note';
 
 // [Affected Quests]
 /**
@@ -97,37 +98,53 @@ async function displayNote(evt) {
     { class: noteObj.noteCls[noteType] }
   );
 
-  const headerCont = createEle('div');
-  for (const [hCls, hName] of noteObj.header[noteType]) {
-    const headerEle = createEle(
-      'span',
-      document.createTextNode(hName),
-      hCls
-    );
-    headerCont.appendChild(headerEle);
-  }
-  noteCont.setHeader(headerCont);
-
-  function createNote(lk, lnm) {
-    return createEle('span', document.createTextNode(lnm));
-  }
-
-  for (const dataNote of dataNotes) {
-    const bodyEle = createEle('div');
-    for (const [bCls, bName] of noteObj.body[noteType]) {
-      bodyEle.appendChild(
-        createEle(
-          'span',
-          Array.isArray(bName)
-            ? createUrl(dataNote[bName[0]], dataNote[bName[1]], createNote)
-            : dataNote[bName]
-              ? createNote(null, dataNote[bName])
-              : createEle('span', 'n/a', 'qnotes-none'),
-          bCls
-        )
+  if (noteType === 'nt') {
+    noteCont.insert(openQuestNote(
+      dataNotes,
+      evt.detail
+    ));
+  } else {
+    const headerCont = createEle('div');
+    for (const [hCls, hName] of noteObj.header[noteType]) {
+      const headerEle = createEle(
+        'span',
+        document.createTextNode(hName),
+        hCls
       );
+      headerCont.appendChild(headerEle);
     }
-    noteCont.insert(bodyEle);
+    noteCont.setHeader(headerCont);
+
+    function createNote(lk, lnm) {
+      return createEle('span', document.createTextNode(lnm));
+    }
+
+    for (const dataNote of dataNotes) {
+      const bodyEle = createEle('div', null, 'note-entries');
+      for (const [bCls, bName, isNote] of noteObj.body[noteType]) {
+        const innerNote = Array.isArray(bName)
+          ? createUrl(dataNote[bName[0]], dataNote[bName[1]], createNote)
+          : dataNote[bName] || isNote
+            ? genNoteItem(dataNote[bName], !!isNote)
+            : createEle('span', 'n/a', 'qnotes-none');
+        bodyEle.appendChild(createEle(
+          'span',
+          innerNote,
+          bCls
+        ));
+      }
+      const noteSubID = new DataContxt(null, 'notecont').createId(noteType, dataNote.id.toString(10)).getId;
+      const noteInfo = new InfoCont(null, { id: noteSubID });
+      bodyEle.appendChild(noteInfo.getInfo);
+      bodyEle.addEventListener('click', toggleOtherNotes.bind({
+        showNote: true,
+        noteID: dataNote.id,
+        noteType,
+        noteInfo,
+        noteSubID
+      }));
+      noteCont.insert(bodyEle);
+    }
   }
 
   InfoCont.insertData(
@@ -142,7 +159,7 @@ async function displayNote(evt) {
  * @param {Event} evt
  */
 function showNotesOverlay(evt) {
-  const evtTarg = evt.target;
+  const evtTarg = evt.target.parentElement;
   const menuTarg = 'notetype' in evtTarg.dataset
     ? evtTarg
     : null;
@@ -153,7 +170,7 @@ function showNotesOverlay(evt) {
   const curT = evt.currentTarget;
   CgOverlay.curQuestID = curT.dataset.id;
   const noteCont = new QuestCont(null);
-  noteCont.setHeader(this);
+  noteCont.setHeader(this.header);
   noteCont.main.classList.add('overlay-notes');
 
   const noteInfo = new InfoCont(
@@ -188,7 +205,10 @@ function showNotesOverlay(evt) {
     noteCont.body
   );
 
-  const clickEvt = new Event('click', { bubbles: true });
+  const clickEvt = new CustomEvent('click', {
+    bubbles: true,
+    detail: this.questNoteMenu
+  });
 
   noteMenus[typeTarg].dispatchEvent(clickEvt);
 }
@@ -705,11 +725,7 @@ async function showQuestsDone(evt) {
   }
 }
 
-/**
- *
- * @param {Event} evt
- */
-function finishedOverlay(evt) {
+function finishedOverlay() {
   if (!allowEvt()) return;
 
   const doneOverlay = new QuestCont(null, { id: 'overlay-finished' });

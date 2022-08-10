@@ -200,7 +200,8 @@ def gen_query_cmd(styl='all', **comb):
                 'reg_name': ', region.region_name',
                 'notes': ''', all_quests.qwt_count AS qwt,
                             all_quests.aff_count AS cut,
-                            all_quests.enm_count AS enm'''
+                            all_quests.enm_count AS enm''',
+                'qnotes': ''', all_quests.no_notes'''
             },
             '_from': {
                 'cmd_head': ' FROM',
@@ -219,12 +220,12 @@ def gen_query_cmd(styl='all', **comb):
 
         styls_cmd = {
             'all': ['fixed', 'allq', 'reg_name', 'notes'],
-            'mall': ['fixed', 'qrr', 'reg_name', 'notes'],
-            chg_mode: ['fixed', 'chg', 'reg_name', 'notes'],
+            'mall': ['fixed', 'qrr', 'reg_name', 'notes', 'qnotes'],
+            chg_mode: ['fixed', 'chg', 'reg_name', 'notes', 'qnotes'],
             'region': ['fixed', 'allq', 'reg_name'],
             'mregion': ['fixed', 'qrr', 'reg_name'],
             'notes': ['fixed', 'allq', 'notes'],
-            'multi': ['fixed', 'qrr', 'notes'],
+            'multi': ['fixed', 'qrr', 'notes', 'qnotes'],
             'def': ['fixed', 'allq'],
             'mdef': ['fixed', 'qrr']
         }

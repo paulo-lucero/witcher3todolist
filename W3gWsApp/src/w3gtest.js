@@ -1,4 +1,4 @@
-import { queryInfo } from './w3gdefs';
+import { queryInfo, removeData } from './w3gdefs';
 async function getPragmaSettings(displayAll = false) {
   const defPragmaSets = {
     // 'n/a' values means default is not applicable
@@ -134,3 +134,68 @@ async function testTem() {
     console.log(testResult.result_test);
   }
 }
+
+// /**
+//  *
+//  * @param {Event} evt
+//  */
+// function testGenIcons(evt) {
+//   const targ = evt.target;
+//   if (targ.id !== 'test-gen-bttn') return;
+
+//   const testIcons = {
+//     qwt: '/static/playing-cards-icon.png',
+//     enm: '/static/sword-icon.png',
+//     add: '/static/plus-small.png',
+//     note: '/static/info.png'
+//   };
+
+//   const selectEle = document.getElementById('test-select-icons');
+//   const selectIconUrl = testIcons[selectEle.selectedOptions[0].value];
+//   const numIcons = parseInt(document.getElementById('test-num-icons').value, 10);
+//   const resultCont = document.getElementById('test-gen-results');
+
+//   removeData(resultCont);
+//   for (let i = 1; i <= numIcons; i++) {
+//     const imgEle = new Image();
+//     imgEle.src = selectIconUrl;
+//     imgEle.classList.add('gentd-icon');
+//     resultCont.appendChild(imgEle);
+//   }
+// }
+
+// const imgObjs = {};
+// const preIcons = [
+//   ['qwt', '/static/playing-cards-icon.png'],
+//   ['enm', '/static/sword-icon.png'],
+//   ['add', '/static/plus-small.png'],
+//   ['note', '/static/info.png']
+// ];
+
+// for (const [iconKey, iconUrl] of preIcons) {
+//   const imgEle = new Image();
+//   imgEle.src = iconUrl;
+//   imgEle.classList.add('gentd-icon');
+//   imgObjs[iconKey] = imgEle;
+// }
+
+// /**
+//  *
+//  * @param {Event} evt
+//  */
+// function testGenIcons2(evt) {
+//   const targ = evt.target;
+//   if (targ.id !== 'test-gen-bttn') return;
+
+//   const selectEle = document.getElementById('test-select-icons');
+//   const imgObj = imgObjs[selectEle.selectedOptions[0].value];
+//   const numIcons = parseInt(document.getElementById('test-num-icons').value, 10);
+//   const resultCont = document.getElementById('test-gen-results');
+
+//   removeData(resultCont);
+//   for (let i = 1; i <= numIcons; i++) {
+//     resultCont.appendChild(imgObj.cloneNode());
+//   }
+// }
+
+// document.getElementById('test-gen-icons').addEventListener('click', testGenIcons2);

@@ -336,16 +336,16 @@ function getParent(ele, identf) {
   }
 }
 
-function hasQuests(ele) {
-  // substitute: firstChild, firstElementChild, hasChildNodes, children
-  return Array.from(ele.children).some(chEle => 'info' in chEle.dataset);
-}
+// function hasQuests(ele) {
+//   // substitute: firstChild, firstElementChild, hasChildNodes, children
+//   return Array.from(ele.children).some(chEle => 'info' in chEle.dataset);
+// }
 
-function firstChildQuest(ele) {
-  // substitute: firstChild, firstElementChild, hasChildNodes, children
-  const firstCh = Array.from(ele.children).find(chEle => 'info' in chEle.dataset);
-  return firstCh !== undefined ? firstCh : null;
-}
+// function firstChildQuest(ele) {
+//   // substitute: firstChild, firstElementChild, hasChildNodes, children
+//   const firstCh = Array.from(ele.children).find(chEle => 'info' in chEle.dataset);
+//   return firstCh !== undefined ? firstCh : null;
+// }
 
 function getAllQuests(ele) {
   return Array.from(ele.children).filter(chEle => 'info' in chEle.dataset);

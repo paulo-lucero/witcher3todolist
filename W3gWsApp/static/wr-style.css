@@ -1,6 +1,7 @@
 :root {
   --heading-px: 21px;
   --backg-color: #EEEEEE;
+  --icon-height: 1.5em;
 }
 
 body {
@@ -298,6 +299,16 @@ body.in-query * {
   width: 35vw;
   height: 80vh;
   background-color: #f8f8ff;
+}
+
+.notes-closed {
+  display: none;
+}
+
+/* Notes Icons */
+
+.gentd-icon {
+  height: 1.5em;
 }
 
 /* .cutoff-quest span, .cutoff-quest span a:link, .cutoff-quest span a:visited {

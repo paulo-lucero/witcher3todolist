@@ -22,9 +22,13 @@ const noteObj = {
   queryFunc: new GenNoteIdentf(
     dataId => `/query/mis-id-${dataId}`,
     dataId => `/query/enm-id-${dataId}`,
-    null
+    dataId => `/query/quest-note-id-${dataId}`
   ),
-  menuCls: new GenNoteIdentf('qwt-menu', 'enm-menu'),
+  noteQuery: new GenNoteIdentf(
+    dataId => `/query/mis-note-id-${dataId}`,
+    dataId => `/query/enm-note-id-${dataId}`
+  ),
+  menuCls: new GenNoteIdentf('qwt-menu', 'enm-menu', 'qt-menu'),
   noteCls: new GenNoteIdentf('qwt-note', 'enm-note'),
   header: new GenNoteIdentf(
     [
@@ -44,17 +48,32 @@ const noteObj = {
         ['p_url', 'p_name']
       ],
       ['qwtitem-location', 'p_location'],
-      ['qwtitem-notes', 'qwent_notes']
+      ['qwtitem-notes', 'has_notes', true]
     ],
     [
       [
         'enmitem-name',
         ['enemy_url', 'enemy_name']
       ],
-      ['enmitem-notes', 'enemy_notes']
+      ['enmitem-notes', 'has_notes', true]
     ]
-  )
+  ),
+  noteUpdate: new GenNoteIdentf('qwt', 'enm', null),
+  imgObjs: {}
 };
+
+for (const [iconKey, iconUrl] of
+  [
+    ['qw', '/static/playing-cards-icon.png'],
+    ['em', '/static/sword-icon.png'],
+    ['add', '/static/plus-small.png'],
+    ['nt', '/static/info.png']
+  ]) {
+  const imgObj = new Image();
+  imgObj.src = iconUrl;
+  imgObj.classList.add('gentd-icon');
+  noteObj.imgObjs[iconKey] = imgObj;
+}
 
 function menuClass(questInfo, cls = 'notes-data') {
   const defCls = [questInfo.cut ? 'cutoff-quest' : 'normal-quest'];
@@ -158,17 +177,26 @@ function genMenuCut(questInfo, evtRef) {
 function genMenuNote(questInfo) {
   const menuData = [
     ['qwt', 'qw'],
-    ['enm', 'em']
+    ['enm', 'em'],
+    ['no_notes', 'nt']
   ];
   const menuEles = [];
+  let questNoteMenu;
   for (const [infoKey, menuKey] of menuData) {
-    if (!(questInfo[infoKey])) continue;
+    const isNote = infoKey === 'no_notes';
+    const hasNote = questInfo[infoKey];
+    if (!hasNote && !isNote) continue;
     const innerMenu = createEle(
       'span',
-      noteObj.names[menuKey],
+      isNote && !hasNote
+        ? noteObj.imgObjs.add.cloneNode()
+        : noteObj.imgObjs[menuKey].cloneNode(),
       null,
       null,
       { 'data-notetype': menuKey });
+    if (isNote) {
+      questNoteMenu = innerMenu;
+    }
     menuEles.push(
       createEle('span', innerMenu)
     );
@@ -183,8 +211,8 @@ function genMenuNote(questInfo) {
       { 'data-id': questInfo.id });
     menuNote.addEventListener(
       'click',
-      showNotesOverlay.bind(
-        createEle(
+      showNotesOverlay.bind({
+        header: createEle(
           'h2',
           [
             createUrl(questInfo.quest_url, questInfo.quest_name),
@@ -193,7 +221,9 @@ function genMenuNote(questInfo) {
               document.createTextNode(questInfo.req_level ? questInfo.req_level : 'n/a')
             )
           ]
-        )
+        ),
+        questNoteMenu
+      }
       ));
   } else {
     menuNote = genNullNote(questInfo);

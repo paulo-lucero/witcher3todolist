@@ -52,7 +52,7 @@ async function initGuide() {
 
   // processing multi
   Updater.addBeforeFunc(
-    function(addtl) {
+    function() {
       const multiConts = document.getElementsByClassName('multi-contnr');
       // const logObjs = [];
       for (const multiCont of multiConts) {
