@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "prebuild": "sass W3gWsApp/src-scss/wr-style.scss W3gWsApp/static/wr-style.css",
     "build": "npx webpack --config webpack.config.js"
   },
   "devDependencies": {

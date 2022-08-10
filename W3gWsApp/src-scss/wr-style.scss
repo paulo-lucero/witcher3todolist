@@ -1,17 +1,27 @@
-:root {
-  --heading-px: 21px;
-  --backg-color: #EEEEEE;
-  --icon-height: 1.5em;
+$heading-px: 21px;
+$backg-color: #EEEEEE;
+$icon-height: 1.5em;
+$vl-width: .2em;
+
+/* Closed Definition */
+
+.hide-button,
+.cont-status-close,
+.quest-cont-closed,
+.notes-closed {
+  display: none;
 }
 
 body {
   margin: 0px;
-  background-color: var(--backg-color);
+  background-color: $backg-color;
 }
 
-#w3g-body {
-  padding: 0 8px 8px;
+body.in-query * {
+  cursor: wait !important;
 }
+
+/* Menu Section (Top Bar) */
 
 #quest-query {
   display: flex;
@@ -20,15 +30,11 @@ body {
   top: 0;
   padding: 8px 0;
   z-index: 1;
-  background-color: var(--backg-color);
+  background-color: $backg-color;
 }
 
 #quest-query-left > * {
   margin: 0 1vw;
-}
-
-.hide-button {
-  display: none;
 }
 
 .button:hover {
@@ -88,58 +94,38 @@ body {
   margin-left: 20px;
 }
 
+/* Content Body */
+
+#w3g-body {
+  padding: 0 8px 8px 8px;
+}
+
 #page-section {
-  height: 100%; /*Later: adaptive, height value changes, might need to use a function e.g. javascript */
+  display: grid;
+  grid-template-columns: 1fr 3em 1fr;
+  grid-template-rows: auto;
 }
 
-#quests-section {
-  float: left;
-  position: relative;
-  box-sizing: border-box;
+#vl-cont {
+  padding: 1.5em 0;
+  margin: 0 auto;
+}
+
+#vl-cont > div {
+  width: $vl-width;
   height: 100%;
-  width: 50%;
-  padding: 10px 20px;
+  background-color: black;
 }
 
-#quests-section::after {
-  content: '';
-  position: absolute;
-  right: -.5px;
-  top: 5%;
-  height: 90%;
-  border-left: 1px solid red;
-  z-index: 1;
+#lsect-menu-cont > span:first-child {
+  padding-right: 2em;
 }
 
-#info-section {
-  float: left;
-  position: relative;
-  box-sizing: border-box;
-  height: 100%;
-  width: 50%;
-  padding: 10px 20px;
-}
+/* Quest Data */
 
-#info-section::after {
-  content: '';
-  position: absolute;
-  left: -.5px;
-  top: 5%;
-  height: 90%;
-  border-left: 1px solid blue;
-  z-index: 1;
-}
+// .quest-header {
 
-#page-section::after {
-  content: "";
-  clear: both;
-  display: table;
-  margin-bottom: .3vw;
-}
-
-.info-subsect, .info-body {
-  display: none;
-}
+// }
 
 .quest-data,
 .headers-questname {
@@ -153,18 +139,6 @@ body {
 .qlvl-none {
   display: inline-block;
   width: 10%;
-}
-
-.notes-data span span {
-  border-right-style: solid;
-}
-
-.notes-data span span:last-child {
-  border-right-style: none;
-}
-
-.multi-notes {
-  display: none;
 }
 
 .notes-data,
@@ -209,24 +183,6 @@ body {
   color: rgba(255, 0, 0, 0.5);
 }
 
-body.in-query * {
-  cursor: wait !important;
-}
-
-#done-display {
-  position: absolute;
-  right: 0px;
-  display: inline-block;
-  width: 10vw;
-}
-
-#done-display:hover,
-.select-mode:hover,
-.cancel-mode:hover {
-  font-weight: bold;
-  cursor: pointer;
-}
-
 .hidden-marker {
   visibility: hidden;
 }
@@ -236,13 +192,9 @@ body.in-query * {
   visibility: revert !important;
 }
 
-.cont-status-close {
-  display: none;
-}
-
 .quest-container .marker {
   display: inline-block;
-  max-width: var(--heading-px);
+  max-width: $heading-px;
 }
 
 .affected-note {
@@ -250,7 +202,7 @@ body.in-query * {
 }
 
 .quest-header {
-  padding-left: var(--heading-px);
+  padding-left: $heading-px;
 }
 
 /* Multi Marker */
@@ -299,10 +251,6 @@ body.in-query * {
   width: 35vw;
   height: 80vh;
   background-color: #f8f8ff;
-}
-
-.notes-closed {
-  display: none;
 }
 
 /* Notes Icons */

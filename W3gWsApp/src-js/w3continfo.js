@@ -76,6 +76,7 @@ class QuestCont {
   static #headCls = 'quest-cont-head';
   static #bodyCls = 'quest-cont-body';
   static #footCls = 'quest-cont-foot';
+  static #closeCls = 'quest-cont-closed';
   static #headWrpCls = 'quest-wrap-head';
   static #bodyWrpCls = 'quest-wrap-body';
   static #footWrpCls = 'quest-wrap-foot';
@@ -139,7 +140,7 @@ class QuestCont {
       ? (headCol.length !== 0
           ? headCol[0]
           : null)
-      : createEle('div', null, QuestCont.#headCls);
+      : createEle('div', null, [QuestCont.#headCls, QuestCont.#closeCls]);
     this.#bodyEle = isCont
       ? (bodyCol.length !== 0
           ? bodyCol[0]
@@ -149,7 +150,7 @@ class QuestCont {
       ? (footCol.length !== 0
           ? footCol[0]
           : null)
-      : createEle('div', null, QuestCont.#footCls);
+      : createEle('div', null, [QuestCont.#footCls, QuestCont.#closeCls]);
 
     if (!isCont) {
       this.main.append(
@@ -224,6 +225,7 @@ class QuestCont {
    * @param {Node|Element|HTMLElement} ele
    */
   setHeader(ele) {
+    this.header.classList.remove(QuestCont.#closeCls);
     this.header.appendChild(ele);
   }
 
@@ -236,6 +238,7 @@ class QuestCont {
   }
 
   setFooter(ele) {
+    this.foot.classList.remove(QuestCont.#closeCls);
     this.foot.appendChild(ele);
   }
 

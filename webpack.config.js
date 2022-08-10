@@ -1,5 +1,5 @@
 const path = require('path');
-const srcPath = path.resolve(__dirname, 'W3gWsApp', 'src');
+const srcPath = path.resolve(__dirname, 'W3gWsApp', 'src-js');
 
 module.exports = {
   mode: 'development',

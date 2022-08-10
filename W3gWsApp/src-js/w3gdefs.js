@@ -403,13 +403,13 @@ async function createLSect() {
       createEle(
         'span',
         'Main Quests',
-        CgLSect.menuCls,
+        [CgLSect.menuCls, 'button'],
         CgLSect.mainId
       ),
       createEle(
         'span',
         'Secondary Quests',
-        CgLSect.menuCls,
+        [CgLSect.menuCls, 'button'],
         CgLSect.secId
       )
     ],
@@ -608,7 +608,7 @@ function setupOverlays() {
     w3Overlay
   );
   overlayInfo.getInfo.id = w3Overlay.id;
-  overlayInfo.getInfo.addEventListener('click', closeNotesOverlay);
+  overlayInfo.getInfo.addEventListener('mousedown', closeNotesOverlay);
   CgOverlay.infoObj = overlayInfo;
 }
 
@@ -623,7 +623,7 @@ function openOverlay() {
 function closeNotesOverlay(evt) { // closing overlay notes menu
   const openNotes = evt.target;
   // using "currentTarget", the target is always element with "qnotes-body" id, regardless where click event is dispatched
-  if (openNotes.id !== CgOverlay.curOpenID) return;
+  if (evt.button !== 0 || openNotes.id !== CgOverlay.curOpenID) return;
   InfoCont.removeData(
     document.getElementsByClassName(CgOverlay.ovlCls),
     { rmv: { class: 'show-overlay-body' } }

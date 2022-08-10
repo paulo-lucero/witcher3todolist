@@ -10,5 +10,6 @@ tests/
 devt/
 W3gWsApp/src-test
 W3gWsApp/static/*.js*
+W3gWsApp/static/*.css*
 .venv/
 node_modules/
