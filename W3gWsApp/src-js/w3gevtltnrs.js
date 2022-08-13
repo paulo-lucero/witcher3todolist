@@ -99,12 +99,26 @@ async function displayNote(evt) {
   );
 
   if (noteType === 'nt') {
+    if (dataNotes.length > 1) {
+      noteCont.setHeader(
+        createEle(
+          'fragment',
+          [
+            createEle('span', 'Region Name'),
+            createEle('span', 'Note')
+          ]
+        )
+      );
+
+      noteCont.header.classList.add('qt-note-reghead');
+      noteCont.main.classList.add('qt-note-muti');
+    }
     noteCont.insert(openQuestNote(
       dataNotes,
-      evt.detail
+      this
     ));
   } else {
-    const headerCont = createEle('div');
+    const headerCont = createEle('div', null, noteObj.headerCont[noteType]);
     for (const [hCls, hName] of noteObj.header[noteType]) {
       const headerEle = createEle(
         'span',
@@ -121,27 +135,28 @@ async function displayNote(evt) {
 
     for (const dataNote of dataNotes) {
       const bodyEle = createEle('div', null, 'note-entries');
+      const innerBody = createEle('div', null, noteObj.bodyCont[noteType]);
       for (const [bCls, bName, isNote] of noteObj.body[noteType]) {
         const innerNote = Array.isArray(bName)
           ? createUrl(dataNote[bName[0]], dataNote[bName[1]], createNote)
           : dataNote[bName] || isNote
             ? genNoteItem(dataNote[bName], !!isNote)
             : createEle('span', 'n/a', 'qnotes-none');
-        bodyEle.appendChild(createEle(
+        innerBody.appendChild(createEle(
           'span',
           innerNote,
           bCls
         ));
       }
-      const noteSubID = new DataContxt(null, 'notecont').createId(noteType, dataNote.id.toString(10)).getId;
-      const noteInfo = new InfoCont(null, { id: noteSubID });
-      bodyEle.appendChild(noteInfo.getInfo);
+
+      bodyEle.appendChild(innerBody);
+      const otherNoteCont = createEle('div', null, ['notes-closed', 'note-entry-cont']);
+      bodyEle.appendChild(otherNoteCont);
       bodyEle.addEventListener('click', toggleOtherNotes.bind({
         showNote: true,
         noteID: dataNote.id,
         noteType,
-        noteInfo,
-        noteSubID
+        noteCont: otherNoteCont
       }));
       noteCont.insert(bodyEle);
     }
@@ -177,7 +192,7 @@ function showNotesOverlay(evt) {
     { class: CgOverlay.ovlCls },
     { id: 'qnotes-data' }
   );
-  const menuCont = createEle('div');
+  const menuCont = createEle('div', null, noteObj.menuCont);
   const noteMenus = {};
   for (const menuD of curT.querySelectorAll('[data-notetype]')) {
     const noteType = menuD.dataset.notetype;
@@ -186,7 +201,7 @@ function showNotesOverlay(evt) {
     const noteMenu = createEle(
       'span',
       noteNmBlp[noteType],
-      noteObj.menuCls[noteType],
+      [noteObj.menuCls[noteType], 'button'],
       null,
       null,
       { menutype: noteType }
@@ -195,7 +210,7 @@ function showNotesOverlay(evt) {
     noteMenus[noteType] = noteMenu;
   }
 
-  menuCont.addEventListener('click', displayNote);
+  menuCont.addEventListener('click', displayNote.bind(this.questNoteMenu));
   noteInfo.addHeader(menuCont);
   noteCont.insert(noteInfo.getInfo);
 
@@ -206,8 +221,7 @@ function showNotesOverlay(evt) {
   );
 
   const clickEvt = new CustomEvent('click', {
-    bubbles: true,
-    detail: this.questNoteMenu
+    bubbles: true
   });
 
   noteMenus[typeTarg].dispatchEvent(clickEvt);
@@ -265,7 +279,7 @@ function confirmProc(evt) {
   const confOvly = document.getElementById(
     CgOverlay.curOpenID
   );
-  const clkEvt = new Event('click', { bubbles: true });
+  const clkEvt = new CustomEvent('mousedown', { bubbles: true, detail: true });
   confOvly.dispatchEvent(clkEvt);
 }
 
@@ -290,7 +304,7 @@ function showDataConfirm(evt) {
   );
 
   confirmCont.setHeader(
-    createEle('h2', 'Opened Crucial Notes:')
+    createEle('h2', 'Opened Crucial Notes')
   );
 
   for (const header of openedCruc) {
@@ -333,7 +347,7 @@ async function displayRegionSect(evt) {
   const regMenu = evt.currentTarget;
   const questCount = parseInt(regMenu.dataset.regcount, 10);
 
-  if (questCount === 0 || !allowEvt()) return;
+  if (!evt.target.classList.contains('region-name') || questCount === 0 || !allowEvt()) return;
   const regContRef = IdRef.getIdRef(regMenu);
   const regionId = parseInt(regMenu.dataset.region, 10);
   const regQuest = new FormattedQuest('sec', regMenu, regionId);
@@ -439,7 +453,7 @@ async function questSectMenu(evt) {
       const regionMenu = createEle(
         'div',
         [
-          createEle('span', document.createTextNode(regionInfo.region_name), 'region-name'),
+          createEle('span', document.createTextNode(regionInfo.region_name), ['region-name', 'button']),
           genRegCountEle(questCount, regID)
         ],
         'region-menu',
@@ -577,7 +591,7 @@ async function showMultiQuest(evt) {
   if (multiInfos.length === 0) return;
   const questCont = genQuestCont(
     [
-      null,
+      { class: 'multi-note' },
       null,
       Object.assign(
         {},
@@ -590,6 +604,8 @@ async function showMultiQuest(evt) {
     ],
     'multi'
   );
+
+  // console.log(questCont.main.className);
   for (const multiInfo of multiInfos) {
     const questEle = multiQuest.genQuestData(multiInfo);
     questCont.insert(questEle);
@@ -777,13 +793,13 @@ function finishedOverlay() {
       createEle(
         'span',
         'Recently',
-        'finished-bttns',
+        ['finished-bttns', 'button'],
         'recently-finished'
       ),
       createEle(
         'span',
         'All',
-        'finished-bttns',
+        ['finished-bttns', 'button'],
         'all-finished'
       )
     ],

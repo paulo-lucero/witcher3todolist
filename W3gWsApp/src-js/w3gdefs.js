@@ -40,7 +40,7 @@ function allowEvt(mode = null) {
 
 /**
  *
- * @param {string} eleName
+ * @param {string} eleName 'fragment' or tag name
  * @param {string|Node[]|Node} inhtml
  * @param {string[]|string} eleCls
  * @param {string} idName
@@ -49,7 +49,9 @@ function allowEvt(mode = null) {
  */
 function createEle(eleName, inhtml, eleCls = null, idName = null, custAtr = null, data = null) {
   // assign "inhtml" as null, if there is no innerHTML
-  const eleObj = document.createElement(eleName);
+  const eleObj = eleName === 'fragment'
+    ? document.createDocumentFragment()
+    : document.createElement(eleName);
   if (inhtml) {
     if (Array.isArray(inhtml)) {
       inhtml.forEach(function(noteEle) { eleObj.appendChild(noteEle); });
@@ -461,6 +463,7 @@ class CgRightSect {
    * @type {InfoCont}
    */
   static infoObj = null;
+  static secCls = 'rsect-crucial-sect';
   static order(type, i = 0) {
     const byCateId = {
       1: [0, ['Main Quests', 'mq']],
@@ -506,7 +509,7 @@ async function createRightInfo() {
   // scavenger quest
   const scContxt = new DataContxt(crucContxt, 'sca');
   const scIdf = scContxt.createId('scv');
-  const scInfo = new InfoCont(null, { id: scIdf.getId });
+  const scInfo = new InfoCont({ class: CgRightSect.secCls }, { id: scIdf.getId });
   scInfo.addHeader(createEle(
     'div',
     'Scavenger Quests',
@@ -524,19 +527,27 @@ async function createRightInfo() {
       const cateIdf = cateContxt.createId(idf);
       const cateInfo = new InfoCont(null, { id: cateIdf.getId });
       cateInfo.addHeader(
-        createEle('div', cateName)
+        createEle(
+          'fragment',
+          [
+            createEle(
+              'div',
+              null,
+              'cruc-cat-divider'
+            ),
+            createEle('div', cateName)
+          ]
+        )
       );
       cateInfos.push(cateInfo);
       cateIds.push(cateIdf.getId);
     }
 
-    const crucInfo = new InfoCont(null, ...cateInfos);
+    const crucInfo = new InfoCont({ class: CgRightSect.secCls }, ...cateInfos);
     crucInfo.addHeader(createEle(
       'div',
       crucName,
-      crucCon !== 'ol'
-        ? CgRightSect.crucHeadCls
-        : null));
+      CgRightSect.crucHeadCls));
     rInfoEle.appendInfo(crucInfo);
     CgRightSect.refs.push(cateIds);
   }
@@ -623,7 +634,9 @@ function openOverlay() {
 function closeNotesOverlay(evt) { // closing overlay notes menu
   const openNotes = evt.target;
   // using "currentTarget", the target is always element with "qnotes-body" id, regardless where click event is dispatched
-  if (evt.button !== 0 || openNotes.id !== CgOverlay.curOpenID) return;
+  const isValid = evt.button === 0 || ('detail' in evt && evt.detail === true);
+  // console.log(`${evt.button} | ${evt.detail} | ${!(evt.button === 0 || ('detail' in evt && evt.detail))}`);
+  if (!isValid || openNotes.id !== CgOverlay.curOpenID) return;
   InfoCont.removeData(
     document.getElementsByClassName(CgOverlay.ovlCls),
     { rmv: { class: 'show-overlay-body' } }

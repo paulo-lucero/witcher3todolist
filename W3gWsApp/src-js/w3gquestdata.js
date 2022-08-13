@@ -28,8 +28,10 @@ const noteObj = {
     dataId => `/query/mis-note-id-${dataId}`,
     dataId => `/query/enm-note-id-${dataId}`
   ),
+  menuCont: 'note-menu',
   menuCls: new GenNoteIdentf('qwt-menu', 'enm-menu', 'qt-menu'),
-  noteCls: new GenNoteIdentf('qwt-note', 'enm-note'),
+  noteCls: new GenNoteIdentf('qwt-note', 'enm-note', 'qt-note'),
+  headerCont: new GenNoteIdentf('qwtheader', 'enmheader'),
   header: new GenNoteIdentf(
     [
       ['qwtheader-name', 'Players'],
@@ -41,6 +43,7 @@ const noteObj = {
       ['enmheader-notes', 'Notes']
     ]
   ),
+  bodyCont: new GenNoteIdentf('qwtitem', 'enmitem'),
   body: new GenNoteIdentf(
     [
       [
@@ -302,7 +305,14 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'main') {
       mainMode ? genMenuRegion(questInfo) : null, 'reg'
     ]
   ];
-  const menuCont = createEle('div', null, 'menu-cont');
+
+  const styleHeader = mode.match(/main|sec|aff|cruc|marked/)
+    ? ['all-cont']
+    : ['multi-cont'];
+
+  styleHeader.push('menu-cont');
+
+  const menuCont = createEle('div', null, styleHeader);
   for (const [ele, type] of menuData) {
     if (ele === null) continue;
     const menuInfo = createEle('span', ele, type);
@@ -332,8 +342,12 @@ function consoQueryData(sect, questInfo, contxtRef, mode = 'main') {
   return sect;
 }
 
-function genNoteHeader(headersData) {
-  const containerEle = createEle('div', null, 'quest-header');
+function genNoteHeader(headersData, mode = 'all') {
+  const styleHeader = mode.match(/main|sec|aff|cruc|marked/)
+    ? ['all-cont']
+    : ['multi-cont'];
+  styleHeader.push('quest-header');
+  const containerEle = createEle('div', null, styleHeader);
   for (const headerD of headersData) { // header
     if (!headerD) continue;
     const [hClass, hName] = headerD;
@@ -389,9 +403,12 @@ function displayQuestData(contAttr, eleType, infosData, contxtRef, mode = 'main'
     );
   }
 
+  questObj.main.classList.add('type-quest-cont');
+
   questObj.setHeader(
     genNoteHeader(
-      questHeaderAry(mode)
+      questHeaderAry(mode),
+      mode
     )
   );
 
@@ -423,9 +440,12 @@ function genQuestCont(contAttr, mode = 'all') {
     );
   }
 
+  questObj.main.classList.add('type-quest-cont');
+
   questObj.setHeader(
     genNoteHeader(
-      questHeaderAry(mode)
+      questHeaderAry(mode),
+      mode
     )
   );
 

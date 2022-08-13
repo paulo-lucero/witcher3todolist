@@ -3,7 +3,6 @@ import {
   getAllQuests,
   isEle,
   removeData,
-  isEles,
   queryInfo,
   crucNoData,
   mainNoData,
@@ -76,7 +75,6 @@ class QuestCont {
   static #headCls = 'quest-cont-head';
   static #bodyCls = 'quest-cont-body';
   static #footCls = 'quest-cont-foot';
-  static #closeCls = 'quest-cont-closed';
   static #headWrpCls = 'quest-wrap-head';
   static #bodyWrpCls = 'quest-wrap-body';
   static #footWrpCls = 'quest-wrap-foot';
@@ -140,25 +138,17 @@ class QuestCont {
       ? (headCol.length !== 0
           ? headCol[0]
           : null)
-      : createEle('div', null, [QuestCont.#headCls, QuestCont.#closeCls]);
+      : null;
     this.#bodyEle = isCont
       ? (bodyCol.length !== 0
           ? bodyCol[0]
           : null)
-      : createEle('div', null, QuestCont.#bodyCls);
+      : null;
     this.#footEle = isCont
       ? (footCol.length !== 0
           ? footCol[0]
           : null)
-      : createEle('div', null, [QuestCont.#footCls, QuestCont.#closeCls]);
-
-    if (!isCont) {
-      this.main.append(
-        this.header,
-        this.body,
-        this.foot
-      );
-    }
+      : null;
 
     const headWrpCol = isCont &&= obj.getElementsByClassName(QuestCont.#headWrpCls);
     const bodyWrpCol = isCont &&= obj.getElementsByClassName(QuestCont.#bodyWrpCls);
@@ -173,10 +163,6 @@ class QuestCont {
       ? footWrpCol[0]
       : null;
 
-    isEles(
-      [this.header, 'Header Container'],
-      [this.body, 'Body Container'],
-      [this.foot, 'Footer Container']);
     if (isObj(mainAtr)) setAttrs(this.main, mainAtr, true);
     if (isObj(headAtr)) setAttrs(this.header, headAtr, true);
     if (isObj(bodyAtr)) setAttrs(this.body, bodyAtr, true);
@@ -191,14 +177,50 @@ class QuestCont {
   }
 
   get header() {
+    if (!isEle(this.#headerEle)) {
+      this.#headerEle = createEle('div', null, QuestCont.#headCls);
+
+      const befNodes = [this.#bodyEle, this.#footEle];
+
+      for (let i = 0; i <= befNodes.length; i++) {
+        if (i === befNodes.length) {
+          this.main.appendChild(this.#headerEle);
+          break;
+        }
+        const befNode = befNodes[i];
+        if (!befNode) continue;
+        this.main.insertBefore(this.#headerEle, befNode);
+        break;
+      }
+    }
     return this.#headerEle;
   }
 
   get body() {
+    if (!isEle(this.#bodyEle)) {
+      this.#bodyEle = createEle('div', null, QuestCont.#bodyCls);
+
+      const befNodes = [this.#footEle];
+
+      for (let i = 0; i <= befNodes.length; i++) {
+        if (i === befNodes.length) {
+          this.main.appendChild(this.#bodyEle);
+          break;
+        }
+        const befNode = befNodes[i];
+        if (!befNode) continue;
+        this.main.insertBefore(this.#bodyEle, befNode);
+        break;
+      }
+    }
     return this.#bodyEle;
   }
 
   get foot() {
+    if (!isEle(this.#footEle)) {
+      this.#footEle = createEle('div', null, QuestCont.#footCls);
+      this.main.appendChild(this.#footEle);
+    }
     return this.#footEle;
   }
 
@@ -225,7 +247,6 @@ class QuestCont {
    * @param {Node|Element|HTMLElement} ele
    */
   setHeader(ele) {
-    this.header.classList.remove(QuestCont.#closeCls);
     this.header.appendChild(ele);
   }
 
@@ -238,7 +259,6 @@ class QuestCont {
   }
 
   setFooter(ele) {
-    this.foot.classList.remove(QuestCont.#closeCls);
     this.foot.appendChild(ele);
   }
 

@@ -6,13 +6,20 @@ import { GenFetchInit } from './w3continfo';
 function genNoteItem(notEmpty, isNote = true) {
   // console.log(`Inner: ${notEmpty} | isNote: ${isNote}`);
   return isNote
-    ? createEle('span', notEmpty ? 'show' : 'create', 'note-item')
+    ? createEle('span',
+      typeof isNote === 'string'
+        ? isNote
+        : notEmpty
+          ? 'Show'
+          : 'Create',
+      ['note-item', 'button']
+    )
     : createEle('span', notEmpty);
 }
 
-async function saveOtherNotes(noteThis, noteItem) {
+async function saveOtherNotes(noteThis) {
   const noteData = noteThis.noteData;
-  let textVal = noteThis.noteInfo.getInfo.querySelector('.note-cont-body textarea').value;
+  let textVal = noteThis.noteCont.querySelector('textarea').value;
   // const noteItem = noteThis.noteInfo.getInfo.querySelector('.note-cont-body .note-item');
   const notEmpty = !!textVal.trim();
 
@@ -40,18 +47,12 @@ async function saveOtherNotes(noteThis, noteItem) {
     noteThis.noteData = textVal;
   }
 
-  noteItem.parentElement.replaceChild(
-    genNoteItem(notEmpty, true),
-    noteItem
-  );
-
   toggleOtherEdit(noteThis);
 }
 
 function toggleOtherEdit(noteThis, editMode = false) {
   const noteData = noteThis.noteData;
-  const noteBodyEle = noteThis.noteInfo.getInfo.querySelector('.note-cont-body');
-  const saveBttnEle = noteThis.noteInfo.getInfo.querySelector('.note-save-bttn');
+  const noteBodyEle = noteThis.noteCont;
 
   removeData(noteBodyEle);
   if (noteData === null || editMode) {
@@ -60,19 +61,21 @@ function toggleOtherEdit(noteThis, editMode = false) {
       null,
       null, null,
       {
-        rows: '5',
-        cols: '45',
         placeholder: 'Enter here your notes'
       });
     textArea.value = noteData !== null ? noteData : '';
     noteBodyEle.appendChild(textArea);
-    saveBttnEle.classList.remove('notes-closed');
+    noteBodyEle.appendChild(
+      createEle('button', 'Save', ['note-bttn', 'note-save-bttn'])
+    );
   } else {
     noteBodyEle.appendChild(createEle(
       'div',
-      marked.parse(noteData),
+      createEle('div', marked.parse(noteData), 'note-markdown-content'),
       'note-markdown'));
-    saveBttnEle.classList.add('notes-closed');
+    noteBodyEle.appendChild(
+      createEle('button', 'Edit', ['note-bttn', 'note-edit-bttn'])
+    );
   }
 }
 
@@ -92,7 +95,9 @@ async function toggleOtherNotes(evt) {
   const targCls = 'note-item';
   const notesCls = 'note-entries';
   const saveBttnCls = 'note-save-bttn';
-  const targEleCL = evt.target.classList;
+  const editBttnCls = 'note-edit-bttn';
+  const targEle = evt.target;
+  const targEleCL = targEle.classList;
   const curTarg = evt.currentTarget;
 
   if (!allowEvt()) return;
@@ -106,24 +111,23 @@ async function toggleOtherNotes(evt) {
     }
 
     if (this.showNote) {
-      const noteCont = createEle(
-        'div',
-        [
-          createEle('div', null, 'note-cont-body'),
-          createEle('button', 'Save', [saveBttnCls, 'notes-closed'])
-        ]
-      );
-
-      this.noteInfo.insert({ id: this.noteSubID }, noteCont);
       getOtherNotes(this);
+      this.noteCont.classList.remove('notes-closed');
     } else {
-      this.noteInfo.closeSub({ id: this.noteSubID });
+      removeData(this.noteCont);
+      this.noteCont.classList.add('notes-closed');
     }
 
+    targEle.parentElement.replaceChild(
+      genNoteItem(this.noteData, this.showNote ? 'Exit' : true),
+      targEle
+    );
+
     this.showNote = !this.showNote;
+    curTarg.classList.toggle('open-note');
   } else if (targEleCL.contains(saveBttnCls)) {
-    await saveOtherNotes(this, curTarg.querySelector(`.${targCls}`));
-  } else if (this.noteInfo.getInfo.querySelector('.note-markdown')) {
+    await saveOtherNotes(this);
+  } else if (targEleCL.contains(editBttnCls)) {
     toggleOtherEdit(this, true);
   }
 }
@@ -138,8 +142,6 @@ function toggleQuestNoteMode(noteThis, editMode = false) {
       'textarea',
       null, null, null,
       {
-        rows: '10',
-        cols: '60',
         placeholder: 'Enter here your notes'
       }
     );
@@ -158,7 +160,8 @@ function toggleQuestNoteMode(noteThis, editMode = false) {
   } else {
     noteContEle.appendChild(createEle(
       'div',
-      marked.parse(noteData)
+      createEle('div', marked.parse(noteData), 'note-markdown-content'),
+      'note-markdown'
     ));
     noteContEle.appendChild(createEle(
       'button',
@@ -217,19 +220,43 @@ async function saveQuestNote(noteThis) {
 function questNoteEvents(evt) {
   const targEle = evt.target;
   const targCl = targEle.classList;
+  const curTarg = evt.currentTarget;
 
   if (targCl.contains('qt-note-bttn-save')) {
     saveQuestNote(this);
   } else if (targCl.contains('qt-note-bttn-edit')) {
     toggleQuestNoteMode(this, true);
-  } else if (targCl.contains('qt-note-regname')) {
-    const noteCont = targEle.parentElement.querySelector('.qt-note-regcont');
+  } else if (targCl.contains('qt-regitem-bttn')) {
+    for (const regNoteEntry of curTarg.parentElement.getElementsByClassName('qt-note-subreg')) {
+      if (regNoteEntry === curTarg) {
+        regNoteEntry.classList.toggle('open-note');
+        continue;
+      }
+      regNoteEntry.classList.toggle('notes-closed');
+    }
+
+    const noteCont = curTarg.querySelector('.note-entry-cont');
     removeData(noteCont);
     noteCont.classList.toggle('notes-closed');
+    const isShow = !noteCont.classList.contains('notes-closed');
 
-    if (!noteCont.classList.contains('notes-closed')) {
+    if (isShow) {
       toggleQuestNoteMode(this);
     }
+
+    const regItemBttn = createEle('span',
+      isShow
+        ? 'Exit'
+        : this.cur.quest_notes
+          ? 'Show'
+          : 'Create',
+      ['qt-regitem-bttn', 'button']
+    );
+    this.regBttn.parentElement.replaceChild(
+      regItemBttn,
+      this.regBttn
+    );
+    this.regBttn = regItemBttn;
   }
 }
 
@@ -239,6 +266,7 @@ function openQuestNote(questNoteData, menuBttn) {
   if (questNoteData.length === 1) {
     const noteThisData = { menuBttn };
     noteThisData.cur = questNoteData[0];
+    questNoteCont.classList.add('note-entry-cont-single');
     noteThisData.noteCont = questNoteCont;
     toggleQuestNoteMode(noteThisData);
 
@@ -247,20 +275,26 @@ function openQuestNote(questNoteData, menuBttn) {
     for (const questNote of questNoteData) {
       const noteThisData = { menuBttn };
 
-      const noteCont = createEle('div', null, ['qt-note-regcont', 'notes-closed']);
+      const noteCont = createEle('div', null, ['note-entry-cont', 'notes-closed']);
+      const regItemBttn = createEle('span', questNote.quest_notes ? 'Show' : 'Create', ['qt-regitem-bttn', 'button']);
       const regNoteCont = createEle(
         'div',
         [
           createEle('div',
-            document.createTextNode(questNote.region_name),
-            'qt-note-regname',
+            [
+              createEle('span', document.createTextNode(questNote.region_name), 'qt-note-regname'),
+              regItemBttn
+            ],
+            'qt-note-regitem',
             null, null),
           noteCont
-        ]
+        ],
+        'qt-note-subreg'
       );
 
       noteThisData.cur = questNote;
       noteThisData.noteCont = noteCont;
+      noteThisData.regBttn = regItemBttn;
       regNoteCont.addEventListener('click', questNoteEvents.bind(noteThisData));
       questNoteCont.appendChild(regNoteCont);
     }
