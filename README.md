@@ -42,7 +42,7 @@ Treasure hunts quests aren't included, except for Scavenger Quests for Bear Scho
 
 Contents presented by this application are based on [The Witcher 3 Fandom wiki](https://witcher.fandom.com/wiki/The_Witcher_3:_Wild_Hunt)
 
-# Manual
+# Instruction
 
 ## Prerequisite
 This project requires:
@@ -56,16 +56,19 @@ npm >=8.15.0
 
 ## Dependencies Setup
 ```
-$ python3 pipenv install --dev
+$ pipenv install --dev
 $ npm install
 ```
+
+Optionally before executing `pipenv install --dev`, you can indicate the pipenv to setup the `virtualenv` in the project folder by setting `PIPENV_VENV_IN_PROJECT=1` environment variable.
+
+If encountered `FileNotFoundError: [Errno 2] No such file or directory:` after excuting pipenv, try to set the environment variable `SETUPTOOLS_USE_DISTUTILS=stdlib` then run again pipenv.
 
 ## Running the application
 In **Bash**:
 ```
 $ npm run build
 $ export FLASK_APP=W3gWsApp:main_app
-$ export FLASK_ENV=development
 $ python3 -m pipenv run flask run
 ```
 
@@ -73,6 +76,9 @@ In **CMD**:
 ```
 npm run build
 set FLASK_APP=W3gWsApp:main_app
-set FLASK_ENV=development
 flask run
 ```
+
+Use the link specify on the terminal, like `* Running on http://127.0.0.1:5000 (Press CTRL+C to quit)` on a selected browser.
+
+Optionally, you can turn on debug mode by adding `--debug` option like `flask --debug run`.
