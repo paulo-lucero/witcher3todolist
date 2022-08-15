@@ -18,5 +18,12 @@
     "marked": "^4.0.18",
     "webpack": "^5.74.0",
     "webpack-cli": "^4.10.0"
-  }
+  },
+  "browserslist": [
+    "defaults",
+    "not op_mini all",
+    "not kaios >= 0",
+    "not and_qq >= 0",
+    "not and_uc >= 0"
+  ]
 }

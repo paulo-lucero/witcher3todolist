@@ -537,10 +537,18 @@ body.in-query * {
   
     #finished-body {
       border: thin solid black;
+      position: relative;
     }
 
     #finished-body-cont {
       padding: .5em;
+      box-sizing: border-box;
+      height: 100%;
+      width: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      overflow-y: scroll;
 
       .cont-type-sub:not(.cont-status-close) {
         margin: 1em 0;
