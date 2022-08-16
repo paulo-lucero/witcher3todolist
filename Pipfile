@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 chunkcrypt = "*"
 Flask = "~=2.1"
+colorama = "*"
 
 [dev-packages]
 
