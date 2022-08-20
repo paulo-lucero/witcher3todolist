@@ -10,7 +10,8 @@ import {
   isObj,
   setAttrs,
   rmvAttrs,
-  ParentE
+  ParentE,
+  righSectSecNoData
 } from './w3gdefs';
 import { parsedAll, EleData, parsedEle } from './w3parse';
 
@@ -972,8 +973,14 @@ class Updater {
 
     // if empty containers
     crucNoData();
+    righSectSecNoData();
     mainNoData();
     finishedNoData();
+
+    if (Updater.isDone) {
+      const showGenNotes = new Event('click');
+      document.getElementById('general-notes').dispatchEvent(showGenNotes);
+    }
   }
 }
 

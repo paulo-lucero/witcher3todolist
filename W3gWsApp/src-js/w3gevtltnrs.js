@@ -17,11 +17,20 @@ import {
   CgLSect,
   isSameRqt,
   CgOverlay,
-  openOverlay
+  openOverlay,
+  GenCustomFetchData
 } from './w3gdefs';
 import { GenFetchInit, InfoCont, Updater, QuestCont } from './w3continfo';
 import { DataContxt, IdRef } from './w3gcontxt';
-import { toggleOtherNotes, genNoteItem, openQuestNote } from './w3note';
+import {
+  toggleOtherNotes,
+  genNoteItem,
+  openQuestNote,
+  applyPlayerStatus,
+  updatePlayerStatus,
+  toggleQuestNoteMode,
+  questNoteEvents
+} from './w3note';
 
 // [Affected Quests]
 /**
@@ -80,6 +89,74 @@ async function displayAffected(evt) {
 // [/ Affected Quests]
 
 // [Overlay: Notes]
+
+function createNoteSetup(noteCont, noteType, dataNotes, entryCls, highLight = false) {
+  const headerCont = createEle('div', null, noteObj.headerCont[noteType]);
+  for (const [hCls, hName] of noteObj.header[noteType]) {
+    const headerEle = createEle(
+      'span',
+      document.createTextNode(hName),
+      hCls
+    );
+    headerCont.appendChild(headerEle);
+  }
+  noteCont.setHeader(headerCont);
+
+  function createNote(lk, lnm) {
+    return createEle('span', document.createTextNode(lnm));
+  }
+
+  for (const dataNote of dataNotes) {
+    const bodyEle = createEle('div', null, 'note-entries');
+    if (entryCls) bodyEle.classList.add(entryCls);
+    const innerBody = createEle('div', null, noteObj.bodyCont[noteType]);
+    if (noteType === 'qw') {
+      const updaterEle = createEle('input', null, null, null, { type: 'checkbox' });
+      innerBody.appendChild(updaterEle);
+      updaterEle.addEventListener('click', updatePlayerStatus.bind(
+        {
+          status: dataNote.qw_status,
+          playerID: dataNote.id
+        }
+      ));
+    }
+    for (const [bCls, bName, isNote] of noteObj.body[noteType]) {
+      const innerNote = Array.isArray(bName)
+        ? createUrl(dataNote[bName[0]], dataNote[bName[1]], createNote)
+        : dataNote[bName] || isNote
+          ? genNoteItem(dataNote[bName], !!isNote)
+          : createEle('span', 'n/a', 'qnotes-none');
+      innerBody.appendChild(createEle(
+        'span',
+        innerNote,
+        [bCls, 'outer-note']
+      ));
+
+      if (noteType === 'qw' && highLight && isNote && dataNote[bName]) {
+        bodyEle.classList.add('has-note-player');
+      }
+    }
+
+    if (noteType === 'qw') {
+      applyPlayerStatus(
+        innerBody,
+        dataNote.qw_status
+      );
+    }
+    bodyEle.appendChild(innerBody);
+    const otherNoteCont = createEle('div', null, ['notes-closed', 'note-entry-cont']);
+    bodyEle.appendChild(otherNoteCont);
+    bodyEle.addEventListener('click', toggleOtherNotes.bind({
+      showNote: true,
+      noteID: dataNote.id,
+      noteType,
+      noteCont: otherNoteCont,
+      highLight
+    }));
+    noteCont.insert(bodyEle);
+  }
+}
+
 async function displayNote(evt) {
   const evtTarg = evt.target;
   const noteType = 'menutype' in evtTarg.dataset
@@ -118,48 +195,7 @@ async function displayNote(evt) {
       this
     ));
   } else {
-    const headerCont = createEle('div', null, noteObj.headerCont[noteType]);
-    for (const [hCls, hName] of noteObj.header[noteType]) {
-      const headerEle = createEle(
-        'span',
-        document.createTextNode(hName),
-        hCls
-      );
-      headerCont.appendChild(headerEle);
-    }
-    noteCont.setHeader(headerCont);
-
-    function createNote(lk, lnm) {
-      return createEle('span', document.createTextNode(lnm));
-    }
-
-    for (const dataNote of dataNotes) {
-      const bodyEle = createEle('div', null, 'note-entries');
-      const innerBody = createEle('div', null, noteObj.bodyCont[noteType]);
-      for (const [bCls, bName, isNote] of noteObj.body[noteType]) {
-        const innerNote = Array.isArray(bName)
-          ? createUrl(dataNote[bName[0]], dataNote[bName[1]], createNote)
-          : dataNote[bName] || isNote
-            ? genNoteItem(dataNote[bName], !!isNote)
-            : createEle('span', 'n/a', 'qnotes-none');
-        innerBody.appendChild(createEle(
-          'span',
-          innerNote,
-          bCls
-        ));
-      }
-
-      bodyEle.appendChild(innerBody);
-      const otherNoteCont = createEle('div', null, ['notes-closed', 'note-entry-cont']);
-      bodyEle.appendChild(otherNoteCont);
-      bodyEle.addEventListener('click', toggleOtherNotes.bind({
-        showNote: true,
-        noteID: dataNote.id,
-        noteType,
-        noteCont: otherNoteCont
-      }));
-      noteCont.insert(bodyEle);
-    }
+    createNoteSetup(noteCont, noteType, dataNotes);
   }
 
   InfoCont.insertData(
@@ -239,18 +275,32 @@ async function displayRegionQuests(regID) {
     CgRightSect.infoObj.getInfo,
     { second: null, region: regID }
   );
+
+  const secRightSecCont = createEle(
+    'div',
+    [
+      createEle('h4', document.createTextNode(CgRightSect.curRegName))
+    ],
+    'right-sect-sec'
+  );
+
+  const regRef = CgRightSect.refs[5];
   if (questInfos.length === 0) {
+    const bodyCont = createEle(
+      'div',
+      createEle('span', 'No Data Available', CgRightSect.questCls),
+      'null-ele'
+    );
+
+    secRightSecCont.appendChild(bodyCont);
+
     CgRightSect.infoObj.insert(
-      { id: CgRightSect.refs[0] },
-      createEle(
-        'div',
-        'No Data Available',
-        CgRightSect.questCls
-      )
+      { id: regRef },
+      secRightSecCont,
+      bodyCont
     );
     return;
   }
-  const regRef = CgRightSect.refs[5];
   const regQuest = new FormattedQuest('reg', regRef, regID);
   const questCont = genQuestCont(null, 'sec');
 
@@ -258,9 +308,11 @@ async function displayRegionQuests(regID) {
     const questEle = regQuest.genQuestData(questInfo);
     questCont.insert(questEle);
   }
+
+  secRightSecCont.appendChild(questCont.main);
   CgRightSect.infoObj.insert(
     { id: regRef },
-    questCont.main,
+    secRightSecCont,
     questCont.body
   );
 }
@@ -293,6 +345,7 @@ function showDataConfirm(evt) {
   const openedCruc = CgRightSect.infoObj.getOpenAll(
     CgRightSect.crucHeadCls
   );
+  CgRightSect.curRegName = this;
   if (openedCruc.length === 0) {
     displayRegionQuests(regID);
     return;
@@ -304,7 +357,12 @@ function showDataConfirm(evt) {
   );
 
   confirmCont.setHeader(
-    createEle('h2', 'Opened Crucial Notes')
+    createEle('h2',
+      [
+        createEle('div', document.createTextNode(this)),
+        createEle('div', 'Opened Crucial Notes')
+      ]
+    )
   );
 
   for (const header of openedCruc) {
@@ -327,7 +385,7 @@ function showDataConfirm(evt) {
       { value: bttnType },
       { regid: regID }
     );
-    confBttn.addEventListener('click', confirmProc);
+    confBttn.addEventListener('click', confirmProc.bind(this));
     confirmBttns.push(confBttn);
   }
   confirmCont.setFooter(
@@ -341,6 +399,125 @@ function showDataConfirm(evt) {
   );
 }
 // [/Region Based Sec-Quest Query]
+
+// [List of Players by region]
+async function showPlayersOverlay(evt) {
+  const overlayNote = new QuestCont(null, { class: 'players-overlay-note' });
+  const regID = this.regID;
+  const regName = this.regName;
+
+  const overlayBody = createEle(
+    'div',
+    [
+      createEle('h4',
+        [
+          document.createTextNode(`Non-Missable Players at ${regName}`),
+          createUrl('https://witcher.fandom.com/wiki/Gwent_players', 'List Of Qwent Players')
+        ]
+      ),
+      overlayNote.main
+    ],
+    'players-overlay-body'
+  );
+
+  const playersData = await queryInfo(`/query/player-reg-${regID}`);
+
+  // console.log('Add "has_players" at all_quests table, data -\n%O', playersData);
+  if (playersData.length === 0) return;
+
+  createNoteSetup(overlayNote, 'qw', playersData, CgOverlay.ovlCls, true);
+
+  openOverlay(
+    { id: CgOverlay.playersID },
+    overlayBody,
+    overlayNote.body
+  );
+}
+// [/List of Players by region]
+
+// [Unmark all qwent players]
+
+/**
+ *
+ * @param {Event} evt
+ */
+async function unmarkPlayersBttns(evt) {
+  const targEle = evt.target;
+
+  if (targEle.id === 'unmark-player-yes') {
+    await queryInfo('/query/update-player',
+      new GenCustomFetchData(
+        {
+          allPlayers: true,
+          status: 0
+        }
+      )
+    );
+  }
+  const confOvly = document.getElementById(
+    CgOverlay.curOpenID
+  );
+  const clkEvt = new CustomEvent('mousedown', { bubbles: true, detail: true });
+  confOvly.dispatchEvent(clkEvt);
+}
+
+function showUnmarkPlayerOverlay(evt) {
+  const unMarkBttns = createEle('div',
+    [
+      createEle('button', 'Yes', null, 'unmark-player-yes'),
+      createEle('button', 'No', null, 'unmark-player-no')
+    ],
+    'unmark-bttns'
+  );
+  unMarkBttns.addEventListener('click', unmarkPlayersBttns);
+  const overlayBody = createEle(
+    'div',
+    [
+      createEle('h3', 'Are You Sure, You want to unmarked all qwent players?'),
+      unMarkBttns
+    ],
+    CgOverlay.ovlCls,
+    'unmark-players-overlay'
+  );
+
+  openOverlay(
+    { id: CgOverlay.confirmID },
+    overlayBody
+  );
+}
+// [/Unmark all qwent players]
+
+// [General Notes]
+async function showGeneralNotesOverlay(evt) {
+  const overlayBody = createEle('div', null, 'gen-notes-body');
+
+  const overlayCont = createEle(
+    'div',
+    overlayBody,
+    CgOverlay.ovlCls,
+    'gen-notes-container'
+  );
+
+  const genNotesData = await queryInfo('/query/gen-notes');
+
+  const genNotesObj = {
+    cur: {
+      quest_notes: genNotesData.gen_note
+    },
+    noteCont: overlayBody,
+    noteType: 'gen'
+  };
+
+  toggleQuestNoteMode(genNotesObj);
+
+  overlayBody.addEventListener('click', questNoteEvents.bind(genNotesObj));
+
+  openOverlay(
+    { id: CgOverlay.genNotesID },
+    overlayCont
+  );
+}
+// [/General Notes]
 
 // [Sec-Quest Query]
 async function displayRegionSect(evt) {
@@ -897,5 +1074,8 @@ export {
   showMultiQuest,
   showDataConfirm,
   genRegCountEle,
-  buttonsMangr
+  buttonsMangr,
+  showPlayersOverlay,
+  showUnmarkPlayerOverlay,
+  showGeneralNotesOverlay
 };

@@ -1,7 +1,103 @@
 import { marked } from 'marked';
-import { allowEvt, createEle, queryInfo, removeData } from './w3gdefs';
+import { allowEvt, createEle, queryInfo, removeData, GenCustomFetchData } from './w3gdefs';
 import { noteObj } from './w3gquestdata';
 import { GenFetchInit } from './w3continfo';
+
+// collapsible https://jsfiddle.net/45Lj3mc7/ https://marked.js.org/using_pro
+const detailsTag = {
+  name: 'detailsTag',
+  level: 'block',
+  start(src) { return src.match(/(?<=\n)\+(?=\++[^+\n]+\++)/)?.index; }, // https://jsfiddle.net/fncaq13z/5/
+  tokenizer(src, tokens) {
+    const consumeM = /^\++[^+\n]+\++\n[\S\s]+?\n\++/.exec(src);
+    const summM = consumeM
+      ? /(?<=\++)[^+\n]+(?=\++\n)/.exec(consumeM[0])
+      : null;
+    const bodyM = consumeM
+      ? /(?<=\++[^+\n]+\++\n)[\S\s]+(?=\n\++)/.exec(consumeM[0])
+      : null;
+    if (consumeM && summM && bodyM) {
+      const token = { // Token to generate
+        type: 'detailsTag', // Should match "name" above
+        raw: consumeM[0], // Text to consume from the source
+        detailsBody: this.lexer.blockTokens(bodyM[0].trim()),
+        text: summM[0].trim(), // Additional custom properties
+        tokens: [] // Array where child inline tokens will be generated
+      };
+      this.lexer.inline(token.text, token.tokens); // Queue this data to be processed for inline tokens
+      return token;
+    }
+  },
+  renderer(token) {
+    return `<details><summary>${this.parser.parseInline(token.tokens)}</summary>${this.parser.parse(token.detailsBody)}</details>`;
+  }
+};
+
+/* e.g.
+
++++ Lorem ipsum +++
+* Mauris bibendum gravida lorem ut aliqu
+* Aliquam mattis tortor a auctor tempo
+++++
+
++++ Lorem ipsum +++
+* Mauris bibendum gravida lorem ut aliqu
+* Aliquam mattis tortor a auctor tempo
+++++
+
+*/
+
+marked.use({ extensions: [detailsTag] });
+
+// notes
+/**
+ *
+ * @param {Node|HTMLElement|Element} innerBody
+ * @param {Boolean} qwStatus
+ */
+function applyPlayerStatus(innerBody, qwStatus) {
+  const updaterEle = innerBody.querySelector('input');
+  const qwtItemEles = Array.from(innerBody.getElementsByClassName('outer-note'));
+
+  updaterEle.checked = !!qwStatus;
+  if (qwStatus) {
+    qwtItemEles.forEach(qwtItemEle => qwtItemEle.classList.add('player-done'));
+  } else {
+    qwtItemEles.forEach(qwtItemEle => qwtItemEle.classList.remove('player-done'));
+  }
+}
+
+/**
+ *
+ * @param {Event} evt
+ */
+async function updatePlayerStatus(evt) {
+  const targEle = evt.target;
+  const noteBodyEle = targEle.parentElement;
+  const newStatusBool = !this.status;
+  const newQwStatus = +newStatusBool;
+
+  const updateResult = await queryInfo('/query/update-player',
+    new GenCustomFetchData(
+      {
+        allPlayers: false,
+        status: newQwStatus,
+        playerID: this.playerID
+      }
+    )
+  );
+
+  // console.log(updateResult);
+  if (updateResult.modified !== 1) {
+    throw new Error(`Number of modified rows is ${updateResult.modif_count}`);
+  }
+
+  this.status = newQwStatus;
+  applyPlayerStatus(
+    noteBodyEle,
+    newStatusBool
+  );
+}
 
 function genNoteItem(notEmpty, isNote = true) {
   // console.log(`Inner: ${notEmpty} | isNote: ${isNote}`);
@@ -19,6 +115,7 @@ function genNoteItem(notEmpty, isNote = true) {
 
 async function saveOtherNotes(noteThis) {
   const noteData = noteThis.noteData;
+  const noteEntryEle = noteThis.noteCont.parentElement;
   let textVal = noteThis.noteCont.querySelector('textarea').value;
   // const noteItem = noteThis.noteInfo.getInfo.querySelector('.note-cont-body .note-item');
   const notEmpty = !!textVal.trim();
@@ -47,6 +144,13 @@ async function saveOtherNotes(noteThis) {
     noteThis.noteData = textVal;
   }
 
+  if (noteThis.highLight) {
+    if (notEmpty) {
+      noteEntryEle.classList.add('has-note-player');
+    } else {
+      noteEntryEle.classList.remove('has-note-player');
+    }
+  }
   toggleOtherEdit(noteThis);
 }
 
@@ -100,9 +204,8 @@ async function toggleOtherNotes(evt) {
   const targEleCL = targEle.classList;
   const curTarg = evt.currentTarget;
 
-  if (!allowEvt()) return;
-
   if (targEleCL.contains(targCls)) {
+    if (!allowEvt()) return;
     const noteEles = curTarg.parentElement.getElementsByClassName(notesCls);
 
     for (const noteEle of noteEles) {
@@ -126,8 +229,10 @@ async function toggleOtherNotes(evt) {
     this.showNote = !this.showNote;
     curTarg.classList.toggle('open-note');
   } else if (targEleCL.contains(saveBttnCls)) {
+    if (!allowEvt()) return;
     await saveOtherNotes(this);
   } else if (targEleCL.contains(editBttnCls)) {
+    if (!allowEvt()) return;
     toggleOtherEdit(this, true);
   }
 }
@@ -177,16 +282,17 @@ async function saveQuestNote(noteThis) {
   const noteContEle = noteThis.noteCont;
   let textValue = noteContEle.querySelector('textarea').value;
   const notEmpty = !!textValue.trim();
+  const isQt = noteThis.noteType === 'qt';
 
   if (noteData !== textValue) {
     if (!notEmpty) {
       textValue = null;
     }
     const updateData = {
-      id: curData.quest_id,
-      regid: curData.region_id,
+      id: isQt ? curData.quest_id : null,
+      regid: isQt ? curData.region_id : null,
       data: textValue,
-      type: 'qt'
+      type: noteThis.noteType
     };
     const modif = await queryInfo(
       '/query/request-modif',
@@ -200,16 +306,17 @@ async function saveQuestNote(noteThis) {
     }
     curData.quest_notes = textValue;
 
-    const newMenuBttn = modif.result.no_notes
-      ? noteObj.imgObjs.nt.cloneNode()
-      : noteObj.imgObjs.add.cloneNode();
+    if (isQt) {
+      const newMenuBttn = modif.result.no_notes
+        ? noteObj.imgObjs.nt.cloneNode()
+        : noteObj.imgObjs.add.cloneNode();
 
-    noteThis.menuBttn.replaceChild(
-      newMenuBttn,
-      noteThis.menuBttn.firstElementChild
-    );
+      noteThis.menuBttn.replaceChild(
+        newMenuBttn,
+        noteThis.menuBttn.firstElementChild
+      );
+    }
   }
-
   toggleQuestNoteMode(noteThis);
 }
 
@@ -263,8 +370,10 @@ function questNoteEvents(evt) {
 function openQuestNote(questNoteData, menuBttn) {
   const questNoteCont = createEle('div');
 
+  const noteType = 'qt';
+
   if (questNoteData.length === 1) {
-    const noteThisData = { menuBttn };
+    const noteThisData = { menuBttn, noteType };
     noteThisData.cur = questNoteData[0];
     questNoteCont.classList.add('note-entry-cont-single');
     noteThisData.noteCont = questNoteCont;
@@ -273,7 +382,7 @@ function openQuestNote(questNoteData, menuBttn) {
     questNoteCont.addEventListener('click', questNoteEvents.bind(noteThisData));
   } else {
     for (const questNote of questNoteData) {
-      const noteThisData = { menuBttn };
+      const noteThisData = { menuBttn, noteType };
 
       const noteCont = createEle('div', null, ['note-entry-cont', 'notes-closed']);
       const regItemBttn = createEle('span', questNote.quest_notes ? 'Show' : 'Create', ['qt-regitem-bttn', 'button']);
@@ -303,4 +412,12 @@ function openQuestNote(questNoteData, menuBttn) {
   return questNoteCont;
 }
 
-export { toggleOtherNotes, genNoteItem, openQuestNote };
+export {
+  toggleOtherNotes,
+  genNoteItem,
+  openQuestNote,
+  applyPlayerStatus,
+  updatePlayerStatus,
+  toggleQuestNoteMode,
+  questNoteEvents
+};

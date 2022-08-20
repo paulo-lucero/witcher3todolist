@@ -197,7 +197,7 @@ def gen_query_cmd(styl='all', **comb):
                 'allq': ', all_quests.region_id',
                 'qrr': ', quest_region.region_id',
                 'chg': ', changes_quest.region_id',
-                'reg_name': ', region.region_name',
+                'reg_name': ', region.region_name, region.non_miss_players',
                 'notes': ''', all_quests.qwt_count AS qwt,
                             all_quests.aff_count AS cut,
                             all_quests.enm_count AS enm''',

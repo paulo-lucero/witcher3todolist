@@ -94,7 +94,11 @@ body.in-query * {
 }
 
 #ave-side-cont {
-  margin-left: 20px;
+  margin: 0 20px 0 25px;
+}
+
+#general-notes {
+  margin-left: 2em;
 }
 
 /* Content Body */
@@ -210,7 +214,7 @@ body.in-query * {
   display: flex;
   justify-content: center;
 
-  > span {
+  > span, img {
     margin: 0 .25em;
   }
 
@@ -314,6 +318,94 @@ body.in-query * {
   z-index: 2;
 }
 
+%note-border {
+  border: thin solid black;
+}
+
+%note-body-format { // header(e.g. player name, location, note) | items
+  display: grid;
+  grid-auto-rows: 2em 1fr;
+
+  .qwtitem *, .enmitem * {
+    max-height: 1.2em;
+    overflow: hidden;
+  }
+}
+
+$note-body-padding: .5em;
+
+%note-padding {
+  padding: 0 $note-body-padding $note-body-padding;
+}
+
+%note-entry {
+  display: grid;
+  grid-template-rows: 1fr 3em;
+  gap: .5em;
+
+  .note-markdown {
+    position: relative;
+  }
+
+  .note-markdown-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    overflow-y: scroll;
+    padding: 0 1em;
+  }
+}
+
+%open-note {
+  height: 100%;
+  display: grid;
+  grid-template-rows: 1.5em 1fr;
+
+  .note-entry-cont {
+    @extend %note-entry;
+  }
+}
+
+$has-note-color: #ff0000;
+
+@mixin note-format($type) {
+  display: grid;
+
+  @if $type == qwt {
+    grid-template-columns: .1fr .3fr .5fr .1fr 1fr; // qwent players
+  } @else {
+    grid-template-columns: .3fr .7fr 1fr; // enemies and multi notes
+  }
+
+  > span {
+    display: flex;
+    align-items: center;
+  }
+}
+
+%qwt-header-grid {
+  grid-column-start: 2;
+}
+
+.player-done > * {
+  position: relative;
+  color: rgba(0, 0, 0, .5) !important;
+  width: 100%;
+  font-style: italic;
+
+  &::after {
+    content: "";
+    border: thin solid black;
+    width: 100%;
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
 .overlay-notes {
   width: 75vw;
   height: 75vh;
@@ -321,61 +413,6 @@ body.in-query * {
   padding: 1em;
   display: grid;
   grid-template-rows: 3em 1fr;
-
-  @mixin note-format($type) {
-    display: grid;
-  
-    @if $type == qwt {
-      grid-template-columns: .3fr .5fr .2fr 1fr; // qwent players
-    } @else {
-      grid-template-columns: .3fr .7fr 1fr; // enemies and multi notes
-    }
-  }
-
-  %note-border {
-    border: thin solid black;
-  }
-
-  %note-body-format { // header(e.g. player name, location, note) | items
-    display: grid;
-    grid-auto-rows: 2em 1fr;
-  }
-
-  $note-body-padding: .5em;
-
-  %note-padding {
-    padding: 0 $note-body-padding $note-body-padding;
-  }
-
-  %note-entry {
-    display: grid;
-    grid-template-rows: 1fr 3em;
-    gap: .5em;
-
-    .note-markdown {
-      position: relative;
-    }
-
-    .note-markdown-content {
-      position: absolute;
-      top: 0;
-      left: 0;
-      height: 100%;
-      width: 100%;
-      overflow-y: scroll;
-      padding: 0 1em;
-    }
-  }
-
-  %open-note {
-    height: 100%;
-    display: grid;
-    grid-template-rows: 1.5em 1fr;
-
-    .note-entry-cont {
-      @extend %note-entry
-    }
-  }
 
   * {
     box-sizing: border-box;
@@ -439,6 +476,10 @@ body.in-query * {
       @include note-format($type: qwt);
     }
 
+    .qwtheader-name {
+      @extend %qwt-header-grid;
+    }
+
     .enmheader, .enmitem {
       @include note-format($type: emm);
     }
@@ -487,11 +528,15 @@ body.in-query * {
 
   h2 {
     margin: 0;
+
+    &:first-child {
+      text-align: center;
+    }
   }
 
   .quest-cont-body {
     @include column-centered($type: body);
-    height: calc($confirm-height * .61);
+    height: calc($confirm-height * .60);
     align-self: stretch;
     border: thin solid black;
   }
@@ -503,6 +548,76 @@ body.in-query * {
 
   .quest-cont-foot button {
     margin: 0 0.5em;
+  }
+}
+
+.players-overlay-body {
+  width: 75vw;
+  height: 75vh;
+  background-color: $overlay-backg-color;
+  padding: 1em;
+  display: grid;
+  grid-template-rows: 3em 1fr;
+
+  @mixin players-border($type: head) {
+    border-left: thin solid black;
+    border-right: thin solid black;
+
+    @if $type == head {
+      border-top: thin solid black;
+    } @else {
+      border-bottom: thin solid black;
+    }
+  }
+
+  $players-note-padding: 0 .5em;
+
+  * {
+    box-sizing: border-box;
+  }
+
+  h4 a {
+    margin-left: 5em;
+  }
+
+  .players-overlay-note {
+    @extend %note-body-format;
+
+    .quest-cont-head {
+      @include players-border($type: head);
+      padding: $players-note-padding;
+    }
+  
+    .quest-cont-body {
+      @include players-border($type: body);
+      padding: $players-note-padding .5em;
+    }
+  
+    .qwtheader, .qwtitem {
+      @include note-format($type: qwt);
+    }
+  
+    .qwtheader-name {
+      @extend %qwt-header-grid;
+    }
+  
+    .qwtheader {
+      height: 100%;
+      align-items: center;
+      font-weight: 600;
+    }
+  
+    .note-entries.open-note {
+      @extend %open-note;
+    }
+  
+    .has-note-player .qwtitem {
+      color: rgba($has-note-color, 1);
+  
+      .qwtitem-name a {
+        color: rgba($has-note-color, 1);
+      }
+    }
   }
 }
 
@@ -558,6 +673,47 @@ body.in-query * {
         font-size: 1.3em;
       }
     }
+  }
+}
+
+#unmark-players-overlay {
+  width: 20em;
+  height: 10em;
+  background-color: $overlay-backg-color;
+  padding: 1em;
+  display: grid;
+  grid-template-rows: 8em 1fr;
+
+  h3 {
+    text-align: center;
+  }
+
+  .unmark-bttns {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    button {
+      margin: 0 .5em;
+    }
+  }
+}
+
+#gen-notes-container {
+  width: 75vw;
+  height: 75vh;
+  background-color: $overlay-backg-color;
+  padding: 1em;
+
+  * {
+    box-sizing: border-box;
+  }
+
+  .gen-notes-body {
+    height: 100%;
+    padding: 1em;
+    @extend %note-entry;
+    @extend %note-border;
   }
 }
 

@@ -1,6 +1,7 @@
 import { InfoCont, Updater } from './w3continfo';
 import { questSectMenu, inputLvlQuery, retreiveCrucialData } from './w3gevtltnrs';
 import { DataContxt, IdRef } from './w3gcontxt';
+import { parsedEle } from './w3parse';
 
 // const sTime = Date.now();
 const queryData = {
@@ -135,6 +136,14 @@ async function queryInfo(queryUrl, addtlData = null, noBlock = false, logInfo = 
       return jsoniedInfo;
     }
   }
+}
+
+function GenCustomFetchData(addtlData, methodType = 'PATCH') {
+  this.method = methodType;
+  this.headers = {
+    'Content-Type': 'application/json'
+  };
+  this.body = JSON.stringify(addtlData);
 }
 
 function removeData(noteData) {
@@ -489,6 +498,7 @@ class CgRightSect {
   static recentLvl = parseInt(inputData.inputEle.value, 10);
   static questCls = 'rsect-info-quests';
   static crucHeadCls = 'rsect-cruc-mainhead';
+  static curRegName = '';
   static #exclLvlRange = 2; // range of level not included, e.g. 25 - 2 = 23, 25 to 24 is not included isn't considered risk
   static get exclLvlR() {
     return CgRightSect.#exclLvlRange;
@@ -576,7 +586,8 @@ async function createRightInfo() {
 
 function crucNoData() {
   const infoObj = CgRightSect.infoObj;
-  if (InfoCont.isOpen(infoObj)) return;
+  const parsedInfo = parsedEle(infoObj.getInfo);
+  if (InfoCont.isOpen(infoObj) || !('cruc' in parsedInfo)) return;
   const nullContnt = createEle(
     'div',
     `No Crucial Quests Data for level: ${CgRightSect.recentLvl}`,
@@ -584,6 +595,35 @@ function crucNoData() {
   infoObj.insert(
     { id: CgRightSect.refs[0] },
     nullContnt
+  );
+}
+
+function righSectSecNoData() {
+  const infoObj = CgRightSect.infoObj;
+  const parsedInfo = parsedEle(infoObj.getInfo);
+  if (InfoCont.isOpen(infoObj) || !('second' in parsedInfo && 'region' in parsedInfo)) return;
+
+  const secRightSecCont = createEle(
+    'div',
+    [
+      createEle('h4', document.createTextNode(CgRightSect.curRegName))
+    ],
+    'right-sect-sec'
+  );
+
+  const regRef = CgRightSect.refs[5];
+  const bodyCont = createEle(
+    'div',
+    createEle('span', 'No Data Available', CgRightSect.questCls),
+    'null-ele'
+  );
+
+  secRightSecCont.appendChild(bodyCont);
+
+  CgRightSect.infoObj.insert(
+    { id: regRef },
+    secRightSecCont,
+    bodyCont
   );
 }
 
@@ -595,6 +635,8 @@ class CgOverlay {
   static noteID = 'qnotes-overlay';
   static confirmID = 'confirm-overlay';
   static finishedID = 'qdone-overlay';
+  static playersID = 'players-overlay-sub';
+  static genNotesID = 'gen-notes-overlay';
   /**
    * @type {InfoCont}
    */
@@ -612,7 +654,9 @@ function setupOverlays() {
     null,
     { id: CgOverlay.noteID },
     { id: CgOverlay.confirmID },
-    { id: CgOverlay.finishedID }
+    { id: CgOverlay.finishedID },
+    { id: CgOverlay.playersID },
+    { id: CgOverlay.genNotesID }
   );
   w3Overlay.parentElement.replaceChild(
     overlayInfo.getInfo,
@@ -687,5 +731,7 @@ export {
   isSameRqt,
   createLSect,
   setupOverlays,
-  openOverlay
+  openOverlay,
+  righSectSecNoData,
+  GenCustomFetchData
 };

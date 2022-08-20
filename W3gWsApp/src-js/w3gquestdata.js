@@ -4,7 +4,8 @@ import {
   showNotesOverlay,
   questMarking,
   showMultiQuest,
-  showDataConfirm
+  showDataConfirm,
+  showPlayersOverlay
 } from './w3gevtltnrs';
 
 import { createEle, createUrl, CgRightSect } from './w3gdefs';
@@ -70,7 +71,8 @@ for (const [iconKey, iconUrl] of
     ['qw', '/static/playing-cards-icon.png'],
     ['em', '/static/sword-icon.png'],
     ['add', '/static/plus-small.png'],
-    ['nt', '/static/info.png']
+    ['nt', '/static/info.png'],
+    ['reg', '/static/direction-road-sign-icon.png']
   ]) {
   const imgObj = new Image();
   imgObj.src = iconUrl;
@@ -235,15 +237,21 @@ function genMenuNote(questInfo) {
 }
 
 function genMenuRegion(questInfo) {
-  const menuRegion = createEle(
-    'span',
-    questInfo.region_name,
-    null,
-    null,
-    null,
-    { regid: questInfo.region_id });
-  menuRegion.addEventListener('click', showDataConfirm);
-  return createEle('span', menuRegion, menuClass(questInfo));
+  const menuRegion = noteObj.imgObjs.reg.cloneNode();
+  menuRegion.dataset.regid = questInfo.region_id;
+  menuRegion.addEventListener('click', showDataConfirm.bind(questInfo.region_name));
+
+  if ('non_miss_players' in questInfo && questInfo.non_miss_players) {
+    const menuPlayers = noteObj.imgObjs.qw.cloneNode();
+    menuPlayers.addEventListener('click', showPlayersOverlay.bind({
+      regID: questInfo.region_id,
+      regName: questInfo.region_name
+    }));
+
+    return createEle('span', [menuPlayers, menuRegion], menuClass(questInfo), null, { title: questInfo.region_name });
+  }
+
+  return createEle('span', menuRegion, menuClass(questInfo), null, { title: questInfo.region_name });
 }
 
 // filter generation

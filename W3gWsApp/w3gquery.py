@@ -88,7 +88,7 @@ def missable_info(id_info):
     click.echo(f'Retrieving Missable Players/Cards Data - Quest ID: {id_info}')
     cur_db.execute('''
     SELECT 
-        qwent_players.id, qwent_players.p_name, qwent_players.p_url, qwent_players.p_location, player_category.p_category,
+        qwent_players.id, qwent_players.p_name, qwent_players.p_url, qwent_players.p_location, player_category.p_category, qwent_players.qw_status,
         CASE
             WHEN qwent_players.qwent_notes IS NULL THEN 0
             ELSE 1
@@ -99,6 +99,33 @@ def missable_info(id_info):
         INNER JOIN player_category ON player_category.id = qwent_players.pcat_id
     WHERE missable_players.allquest_id = ?''', (id_info, ))
     return jsonify(cur_db.fetchall())
+
+@query_bp.route('/player-reg-<int:reg_info>')
+def players_info(reg_info):
+    conn_db = w3gdbhandl.conn_w3gdb()
+    cur_db = conn_db.cursor()
+    cur_db.execute('''
+        SELECT
+            qwent_players.id, qwent_players.p_name, qwent_players.p_url, qwent_players.p_location, qwent_players.qw_status,
+            CASE
+                WHEN qwent_players.qwent_notes IS NULL THEN 0
+                ELSE 1
+            END AS has_notes
+        FROM qwent_players
+        WHERE qwent_players.region_id = ? AND qwent_players.pcat_id = 1''', (reg_info, ))
+    return jsonify(cur_db.fetchall())
+
+@query_bp.route('/update-player', methods=['PATCH'])
+def update_player():
+    conn_db = w3gdbhandl.conn_w3gdb()
+    update_data = request.get_json(cache=False)
+    if update_data['allPlayers']:
+        cur_db = conn_db.execute('UPDATE qwent_players SET qw_status = ?', (update_data['status'], ))
+    else:
+        cur_db = conn_db.execute('UPDATE qwent_players SET qw_status = ? WHERE qwent_players.id = ?', (update_data['status'], update_data['playerID']))
+    modif_count = cur_db.rowcount
+    conn_db.commit()
+    return jsonify(modified=modif_count)
 
 @query_bp.route('/mis-note-id-<int:id_info>')
 def missable_note(id_info):
@@ -161,6 +188,14 @@ def quest_info(id_info):
     ), (id_info, ))
 
     return jsonify(cur_db.fetchall())
+
+@query_bp.route('/gen-notes')
+def general_notes():
+    conn_db = w3gdbhandl.conn_w3gdb()
+    cur_db = conn_db.cursor()
+    cur_db.execute('SELECT general_notes.gen_note FROM general_notes')
+
+    return jsonify(cur_db.fetchone())
 
 @query_bp.route('/request-modif', methods=['PATCH'])
 def quest_done():
@@ -254,10 +289,12 @@ def quest_done():
         elif note_type == quest_type:
             note_reg = json_data['note']['regid']
             sql_cmd = f'UPDATE quest_region SET quest_notes = ? WHERE quest_region.quest_id = ? AND quest_region.region_id = {note_reg}'
+        elif note_type == 'gen':
+            sql_cmd = 'UPDATE general_notes SET gen_note = ?'
         else:
             raise ValueError(f'This {note_type} Note Type isn\'t valid')
 
-        cur_db.execute(sql_cmd, (note_data, note_id))
+        cur_db.execute(sql_cmd, (note_data, note_id) if note_id is not None else (note_data, ))
         modif_count = cur_db.rowcount
 
         if note_type == quest_type:

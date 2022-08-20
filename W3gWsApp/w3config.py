@@ -8,7 +8,7 @@ def db_setup():
         return cur_db_name
     print(' - Default database not found, attempting to create to one, please stay connected to the internet')
     downl_decrypt(
-        'https://archive.org/download/tw3lvlg0-0-7/tw3lvlg0-0-7.encdb',
+        'https://archive.org/download/tw3lvlg0-0-10/tw3lvlg0-0-10.encdb',
          cur_db_name,
          '-OYUYWnW1JBg4UPZ_-0pLWEO5aQH64ujQQOf3BF5soQ=',
          False,

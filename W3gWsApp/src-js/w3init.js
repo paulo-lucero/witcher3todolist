@@ -22,7 +22,12 @@ import {
   createLSect,
   createRightInfo
 } from './w3gdefs';
-import { genRegCountEle, buttonsMangr } from './w3gevtltnrs';
+import {
+  genRegCountEle,
+  buttonsMangr,
+  showUnmarkPlayerOverlay,
+  showGeneralNotesOverlay
+} from './w3gevtltnrs';
 import { parsedEle } from './w3parse';
 
 function toggleRemove(dataCont) {
@@ -380,23 +385,38 @@ async function initGuide() {
       const regCont = eleData.getEleAll({ second: null, region: curReg });
       if (!regCont || regCont.length === 0 || regCont.every(ele => ele !== infoEle)) return;
 
-      let questCont = document.getElementById(subID).firstElementChild;
-      questCont = (questCont && new QuestCont(questCont)) || genQuestCont(null, 'sec');
+      const secRightSecCont = document.getElementsByClassName('right-sect-sec')[0];
+      let questContObj = document.getElementById(subID).getElementsByClassName('null-ele');
+      if (questContObj.length === 0) {
+        questContObj = new QuestCont(secRightSecCont.getElementsByClassName('type-quest-cont')[0]);
+      } else {
+        const newQuestCont = genQuestCont(null, 'sec');
+        secRightSecCont.replaceChild(newQuestCont.main, questContObj[0]);
+        questContObj = newQuestCont;
+
+        const regRef = CgRightSect.refs[5];
+        CgRightSect.infoObj.insert(
+          { id: regRef },
+          secRightSecCont,
+          newQuestCont.body
+        );
+      }
+      // questContObj = (questContObj && new QuestCont(questContObj)) || genQuestCont(null, 'sec');
       for (const questInfo of reslt.result) {
         const questReg = questInfo.region_id;
         if (questReg !== curReg) continue;
 
-        infoObj.closeSub({ id: CgRightSect.refs[0] });
+        // infoObj.closeSub({ id: CgRightSect.refs[0] });
 
         insertData(
           new FormattedQuest('reg', subID, curReg).genQuestData(questInfo),
-          questCont.body,
+          questContObj.body,
           'level'
         );
 
-        if (questCont.main.parentElement === null) {
-          infoObj.insert({ id: subID }, questCont.main, questCont.body);
-        }
+        // if (questContObj.main.parentElement === null) {
+        //   infoObj.insert({ id: subID }, questContObj.main, questContObj.body);
+        // }
       }
     }
   );
@@ -490,6 +510,8 @@ async function initGuide() {
   await createRightInfo();
 
   document.getElementById('quest-query-left').addEventListener('click', buttonsMangr);
+  document.getElementById('unmark-players').addEventListener('click', showUnmarkPlayerOverlay);
+  document.getElementById('general-notes').addEventListener('click', showGeneralNotesOverlay);
 }
 
 initGuide();
