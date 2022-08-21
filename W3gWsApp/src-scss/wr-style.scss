@@ -455,13 +455,24 @@ $has-note-color: #ff0000;
           @extend %note-body-format;
         }
 
-        div:not(.qt-note-reghead, .qt-note-subreg) {
+        // div:not(.qt-note-reghead, .qt-note-subreg) {
+        //   height: 100%;
+        // }
+
+        // non-multi quest notes
+        &:not(.qt-note-muti) .quest-cont-body {
           height: 100%;
         }
 
         .note-entry-cont-single {
+          height: 100%;
           padding-top: $note-body-padding;
           @extend %note-entry;
+        }
+
+        // multi quest notes
+        &.qt-note-muti .quest-cont-body > div {
+          height: 100%;
         }
       }
 
