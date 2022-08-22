@@ -1,6 +1,6 @@
 # About
 
-This application is mostly a to-do list for the The Witcher 3: Wild Hunt quests.
+This application is mostly a to-do list for the The Witcher 3: Wild Hunt quests. The app is compatible on steam built in overlay web browser.
 
 The application goals is to avoid or minimize:
   * Overleveling of the game quests by providing a list of unfinished quests that on risk of overleveling based on the inputted level.

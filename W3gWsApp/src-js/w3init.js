@@ -506,12 +506,19 @@ async function initGuide() {
   );
 
   setupOverlays();
+
   await createLSect();
   await createRightInfo();
 
   document.getElementById('quest-query-left').addEventListener('click', buttonsMangr);
   document.getElementById('unmark-players').addEventListener('click', showUnmarkPlayerOverlay);
-  document.getElementById('general-notes').addEventListener('click', showGeneralNotesOverlay);
+
+  const genOverlayBttn = document.getElementById('general-notes');
+  genOverlayBttn.addEventListener('click', showGeneralNotesOverlay);
+
+  const openGeneralNotes = new Event('click');
+
+  genOverlayBttn.dispatchEvent(openGeneralNotes);
 }
 
 initGuide();
